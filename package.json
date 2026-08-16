@@ -1,0 +1,24 @@
+{
+  "name": "intellica-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Intellica - Faculty Appraisal & Research Performance Management Monorepo",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"cyan.bold,magenta.bold\" --kill-others-on-fail \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=frontend",
+    "start": "npm run start --workspace=backend",
+    "install:all": "npm install --workspace=backend && npm install --workspace=frontend",
+    "seed": "npm run seed --workspace=backend",
+    "seed:reset": "npm run seed:reset --workspace=backend",
+    "lint": "npm run lint --workspace=frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

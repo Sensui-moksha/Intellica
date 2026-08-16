@@ -1,0 +1,36 @@
+# Dependencies & package caches
+node_modules/
+*/node_modules/
+.npm/
+
+# Environment files
+.env
+.env.*
+*.env
+backend/.env
+frontend/.env
+
+# Local upload files (mounted via Docker volume)
+backend/uploads/*
+!backend/uploads/.gitkeep
+uploads/
+
+# Git & IDE configs
+.git/
+.github/
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Test & coverage artifacts
+coverage/
+.nyc_output/
+scratch/
+tmp/

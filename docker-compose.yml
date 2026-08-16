@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: intellica-app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5001}:5001"
+    volumes:
+      - intellica_uploads:/app/backend/uploads
+
+volumes:
+  intellica_uploads:
+    driver: local
