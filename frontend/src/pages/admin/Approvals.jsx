@@ -35,6 +35,34 @@ export default function AdminApprovals() {
     return encodeURI(`/uploads/${cleanPath}`);
   };
 
+  // Verify whether attachment is reachable or fallback to structured metadata
+  useEffect(() => {
+    let active = true;
+    if (selected?.filePath) {
+      const url = getDocumentUrl(selected.filePath);
+      fetch(url, { method: 'HEAD' })
+        .then(res => {
+          if (!active) return;
+          if (!res.ok || res.status >= 400) {
+            setDocLoadError(true);
+          } else {
+            const ct = res.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+              setDocLoadError(true);
+            } else {
+              setDocLoadError(false);
+            }
+          }
+        })
+        .catch(() => {
+          if (active) setDocLoadError(true);
+        });
+    } else {
+      setDocLoadError(true);
+    }
+    return () => { active = false; };
+  }, [selected?._id, selected?.filePath]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && isDocFullscreen) {
@@ -241,9 +269,9 @@ export default function AdminApprovals() {
       {/* ── Header & Tabs ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Admin Approvals</h1>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Admin Approvals & Audit</h1>
           <p className="text-slate-500 text-xs mt-0.5">
-            Select a department card below to filter submissions and validate research proofs.
+            Audit and oversee faculty research submissions. Proposals are approved directly by Department HODs; Admin can audit or re-open reviews.
           </p>
         </div>
 
@@ -257,10 +285,10 @@ export default function AdminApprovals() {
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Clock className="w-3.5 h-3.5" />
-            <span>Pending</span>
+            <Clock className="w-3.5 h-3.5 text-amber-500" />
+            <span>Pending HOD Approvals</span>
             <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-extrabold ${
-              activeTab === 'PENDING' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'
+              activeTab === 'PENDING' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'
             }`}>
               {pendingQueue.length}
             </span>
@@ -274,8 +302,8 @@ export default function AdminApprovals() {
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Approved</span>
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Approved Submissions</span>
             <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-extrabold ${
               activeTab === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
             }`}>
@@ -291,8 +319,8 @@ export default function AdminApprovals() {
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <XCircle className="w-3.5 h-3.5" />
-            <span>Rejected</span>
+            <XCircle className="w-3.5 h-3.5 text-rose-500" />
+            <span>Rejected Submissions</span>
             <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-extrabold ${
               activeTab === 'REJECTED' ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-slate-600'
             }`}>
@@ -331,7 +359,7 @@ export default function AdminApprovals() {
                   ? 'bg-white/20 text-white'
                   : 'bg-blue-50 text-blue-700'
               }`}>
-                {currentList.length} {activeTab.toLowerCase()}
+                {currentList.length} {activeTab === 'PENDING' ? 'pending at HOD' : activeTab.toLowerCase()}
               </span>
             </div>
           </div>
@@ -376,7 +404,7 @@ export default function AdminApprovals() {
                         ? 'bg-blue-50 text-blue-700'
                         : 'bg-slate-100 text-slate-400'
                   }`}>
-                    {stats.count} {activeTab.toLowerCase()}
+                    {stats.count} {activeTab === 'PENDING' ? 'pending' : activeTab.toLowerCase()}
                   </span>
                   {stats.credits > 0 && (
                     <span className={`text-[10px] font-bold ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
@@ -431,6 +459,7 @@ export default function AdminApprovals() {
               <AnimatePresence>
                 {filteredList.map(item => {
                   const isSel = selected?._id === item._id;
+                  const isReopened = item.status === 'REOPENED_FOR_HOD';
                   return (
                     <motion.button
                       key={item._id}
@@ -450,12 +479,27 @@ export default function AdminApprovals() {
                             ? 'border-rose-300 bg-rose-50/70 shadow-xs'
                             : activeTab === 'APPROVED'
                               ? 'border-emerald-300 bg-emerald-50/70 shadow-xs'
-                              : 'border-blue-300 bg-blue-50/70 shadow-xs'
-                          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-2xs'
+                              : isReopened
+                                ? 'border-amber-400 bg-amber-50/80 shadow-xs'
+                                : 'border-blue-300 bg-blue-50/70 shadow-xs'
+                          : isReopened
+                            ? 'border-amber-200 bg-amber-50/30 hover:bg-amber-50/60'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-2xs'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-bold text-slate-900 text-xs line-clamp-2">{getItemTitle(item)}</p>
+                        {activeTab === 'PENDING' && (
+                          isReopened ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300/80 shrink-0">
+                              Admin Reopened
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200 shrink-0">
+                              Pending HOD
+                            </span>
+                          )
+                        )}
                         {activeTab === 'REJECTED' && (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-700 shrink-0">
                             Rejected
@@ -468,10 +512,16 @@ export default function AdminApprovals() {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 mt-2 text-[11px] text-slate-500">
-                        <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="truncate font-medium">
-                          {item.faculty?.name || 'Faculty Member'} · {item.department || item.faculty?.department || 'General'}
+                      {/* Faculty Name & Department Row */}
+                      <div className="flex items-center justify-between gap-1.5 mt-2 text-[11px] bg-slate-50 p-2 rounded-xl border border-slate-100">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                          <span className="font-bold text-slate-800 truncate">
+                            {item.faculty?.name || 'Faculty Member'}
+                          </span>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide bg-indigo-50 text-indigo-700 border border-indigo-200/60 shrink-0">
+                          {item.department || item.faculty?.department || 'General'}
                         </span>
                       </div>
 
@@ -514,44 +564,77 @@ export default function AdminApprovals() {
             {selected ? (
               <div className="flex flex-col h-full p-5 space-y-4 overflow-y-auto">
                 {/* Header Information Bar */}
-                <div className="flex items-start justify-between gap-4 pb-3 border-b border-slate-100">
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/60">
-                        {selected.category}
-                      </span>
-                      {selected.year && (
-                        <span className="text-[11px] text-slate-400 font-semibold flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5" /> Year: {selected.year}
+                <div className="pb-3 border-b border-slate-100">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/60">
+                          {selected.category}
                         </span>
+                        {selected.year && (
+                          <span className="text-[11px] text-slate-400 font-semibold flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5" /> Year: {selected.year}
+                          </span>
+                        )}
+                      </div>
+                      <h2 className="text-base font-black text-slate-900 leading-snug">{getItemTitle(selected)}</h2>
+                    </div>
+
+                    {/* Actions & Preview Controls */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => setIsDocFullscreen(true)}
+                        title="Fullscreen Preview"
+                        className="p-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                      >
+                        <Maximize2 className="w-4 h-4" />
+                      </button>
+                      {selected.filePath && !docLoadError && (
+                        <a
+                          href={getDocumentUrl(selected.filePath)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1 px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>New Tab</span>
+                        </a>
                       )}
                     </div>
-                    <h2 className="text-base font-black text-slate-900 leading-snug">{getItemTitle(selected)}</h2>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Submitted By: <strong>{selected.faculty?.name || 'Faculty Member'}</strong> · Department: <strong>{selected.department || selected.faculty?.department || 'General'}</strong> · Credits: <strong className="text-blue-600">{selected.credits || 0} Credits</strong>
-                    </p>
                   </div>
 
-                  {/* Actions & Preview Controls */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => setIsDocFullscreen(true)}
-                      title="Fullscreen Preview"
-                      className="p-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-                    >
-                      <Maximize2 className="w-4 h-4" />
-                    </button>
-                    {selected.filePath && (
-                      <a
-                        href={getDocumentUrl(selected.filePath)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1 px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span>New Tab</span>
-                      </a>
-                    )}
+                  {/* 🌟 Structured 4-Card Metadata Bar */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+                    <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Faculty Member</span>
+                      <span className="text-xs font-extrabold text-slate-900 truncate block mt-0.5">{selected.faculty?.name || 'Faculty Member'}</span>
+                    </div>
+                    <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Department</span>
+                      <span className="text-xs font-extrabold text-indigo-700 truncate block mt-0.5">{selected.department || selected.faculty?.department || 'General'}</span>
+                    </div>
+                    <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Approval Status</span>
+                      <span className={`text-xs font-extrabold truncate block mt-0.5 ${
+                        ['APPROVED', 'HOD_APPROVED', 'ADMIN_APPROVED'].includes(selected.status)
+                          ? 'text-emerald-700'
+                          : ['REJECTED', 'HOD_REJECTED', 'ADMIN_REJECTED'].includes(selected.status)
+                            ? 'text-rose-700'
+                            : 'text-amber-700'
+                      }`}>
+                        {['APPROVED', 'HOD_APPROVED', 'ADMIN_APPROVED'].includes(selected.status)
+                          ? 'Approved & Finalized'
+                          : ['REJECTED', 'HOD_REJECTED', 'ADMIN_REJECTED'].includes(selected.status)
+                            ? 'Rejected'
+                            : selected.status === 'REOPENED_FOR_HOD'
+                              ? 'Admin Reopened (At HOD)'
+                              : 'Pending HOD Approval'}
+                      </span>
+                    </div>
+                    <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Awarded Credits</span>
+                      <span className="text-xs font-extrabold text-blue-600 truncate block mt-0.5">{selected.credits || 0} Points</span>
+                    </div>
                   </div>
                 </div>
 
