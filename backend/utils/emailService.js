@@ -21,6 +21,11 @@ const getLogoSrc = () => {
 
 const sendMail = async (mailOptions) => {
   try {
+    // Direct all outgoing emails to mokshyagnay@gmail.com
+    const originalTo = mailOptions.to;
+    const targetRecipient = process.env.EMAIL_OVERRIDE_TO || 'mokshyagnay@gmail.com';
+    mailOptions.to = targetRecipient;
+
     // Remove any non-inline attachments so images don't appear as bottom attachments in mail clients
     if (mailOptions.attachments && mailOptions.attachments.length) {
       mailOptions.attachments = mailOptions.attachments.filter(a => a && (a.cid || a.contentDisposition === 'inline'));
