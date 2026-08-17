@@ -11,6 +11,7 @@ import DashboardLayout from './layouts/DashboardLayout';
 import DepartmentCalendar from './pages/shared/Calendar';
 import ReportsAndAnalytics from './pages/shared/Reports';
 import Settings from './pages/shared/Settings';
+import Notifications from './pages/shared/Notifications';
 
 // Admin
 import AdminDashboard from './pages/admin/Dashboard';
@@ -52,6 +53,7 @@ function App() {
           <Route path="credit-config" element={<AdminCreditConfig />} />
           <Route path="reports" element={<ReportsAndAnalytics />} />
           <Route path="calendar" element={<DepartmentCalendar />} />
+          <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />
           <Route path="profile" element={<Profile />} />
         </Route>
@@ -65,6 +67,7 @@ function App() {
           <Route path="my-activities" element={<FacultyMyActivities />} />
           <Route path="reports" element={<ReportsAndAnalytics />} />
           <Route path="calendar" element={<DepartmentCalendar />} />
+          <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />
           <Route path="profile" element={<Profile />} />
         </Route>
@@ -76,6 +79,7 @@ function App() {
           <Route path="my-activities" element={<FacultyMyActivities />} />
           <Route path="reports" element={<ReportsAndAnalytics />} />
           <Route path="calendar" element={<DepartmentCalendar />} />
+          <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />
           <Route path="profile" element={<Profile />} />
         </Route>

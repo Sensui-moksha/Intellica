@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Bell, Search, User, ShieldCheck, LogOut, ChevronDown,
-  Building2, Sparkles, CheckCircle2, Settings
+  Building2, Sparkles, CheckCircle2, Settings, ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { notificationApi, authApi, hodApi, facultyApi } from '../api/services';
@@ -202,15 +202,19 @@ export default function Header() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 6, scale: 0.97 }}
                 transition={{ duration: 0.18, ease: [0.21, 0.47, 0.32, 0.98] }}
-                className="absolute right-0 mt-2 w-88 bg-white rounded-3xl shadow-2xl border p-4 space-y-3 z-50"
+                className="absolute right-0 mt-2 w-92 bg-white rounded-3xl shadow-2xl border p-4 space-y-3 z-50"
                 style={{ borderColor: '#e2e8f0' }}
               >
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-black text-slate-900">Notifications</span>
-                    {unreadCount > 0 && (
+                    {unreadCount > 0 ? (
                       <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
-                        {unreadCount} Unread
+                        {unreadCount} New
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        All Read
                       </span>
                     )}
                   </div>
@@ -225,41 +229,58 @@ export default function Header() {
                   )}
                 </div>
 
-                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                  {notifications.length > 0 ? (
-                    notifications.map(n => {
-                      const isUnread = !n.isRead && !n.read;
-                      return (
-                        <div
-                          key={n._id}
-                          onClick={() => handleMarkAsRead(n._id)}
-                          className={`p-3 rounded-2xl transition-all text-xs space-y-1 cursor-pointer border ${
-                            isUnread
-                              ? 'bg-blue-50/60 border-blue-200/80 hover:bg-blue-50'
-                              : 'bg-slate-50 border-slate-100 hover:bg-slate-100/70 text-slate-600'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <p className={`text-[11px] leading-tight ${isUnread ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
-                              {n.message}
-                            </p>
-                            {isUnread && (
-                              <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0 mt-1" />
-                            )}
+                {/* Unread / Active Notifications */}
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {notifications.filter(n => !n.isRead && !n.read).length > 0 ? (
+                    notifications
+                      .filter(n => !n.isRead && !n.read)
+                      .map(n => {
+                        return (
+                          <div
+                            key={n._id}
+                            onClick={() => handleMarkAsRead(n._id)}
+                            className="p-3 rounded-2xl transition-all text-xs space-y-1 cursor-pointer border bg-blue-50/60 border-blue-200/80 hover:bg-blue-50"
+                            title="Click to mark as read and move to history"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-[11px] leading-tight font-bold text-slate-900">
+                                {n.message}
+                              </p>
+                              <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0 mt-1 animate-pulse" />
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium pt-0.5">
+                              <span>{formatNotifTime(n.createdAt)}</span>
+                              <span className="text-blue-600 font-semibold hover:underline">Mark read ✓</span>
+                            </div>
                           </div>
-                          <p className="text-[10px] text-slate-400 font-medium">
-                            {formatNotifTime(n.createdAt)}
-                          </p>
-                        </div>
-                      );
-                    })
+                        );
+                      })
                   ) : (
-                    <div className="py-8 text-center text-slate-400 text-xs">
-                      <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                      <p className="font-bold text-slate-600">No notifications</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">You're all caught up!</p>
+                    <div className="py-5 text-center text-slate-400 text-xs space-y-1.5">
+                      <CheckCircle2 className="w-7 h-7 text-emerald-500 mx-auto" />
+                      <p className="font-bold text-slate-700">No new notifications</p>
+                      <p className="text-[10px] text-slate-400">All read messages are saved in your notification history.</p>
                     </div>
                   )}
+                </div>
+
+                {/* View All Notifications Button */}
+                <div className="pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowNotifications(false);
+                      const baseRole = (role || 'faculty').toLowerCase();
+                      navigate(`/${baseRole}/notifications`);
+                    }}
+                    className="w-full py-2 px-3 text-center text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50/70 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>View all notifications</span>
+                    <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-700">
+                      {notifications.length}
+                    </span>
+                    <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+                  </button>
                 </div>
               </motion.div>
             )}
