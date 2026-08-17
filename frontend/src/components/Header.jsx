@@ -77,8 +77,8 @@ export default function Header() {
     loadNotifications();
     fetchProfile();
 
-    // 1. Live Background Polling every 4 seconds
-    const intervalId = setInterval(loadNotifications, 4000);
+    // 1. Fallback Background Polling every 20 seconds (Socket.IO handles instant push)
+    const intervalId = setInterval(loadNotifications, 20000);
 
     // 2. Real-time focus & event sync
     const handleProfileUpdate = () => {

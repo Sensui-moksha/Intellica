@@ -87,8 +87,8 @@ export default function AdminApprovals() {
   useEffect(() => {
     loadAllData(true);
 
-    // Live background polling every 5s + window focus + broadcast sync
-    const interval = setInterval(() => loadAllData(false), 5000);
+    // Fallback background polling every 25s (Socket.IO handles real-time push)
+    const interval = setInterval(() => loadAllData(false), 25000);
     const handleSync = () => loadAllData(false);
 
     const unsubBroadcast = subscribeToRealtimeEvent(SYNC_EVENTS.APPROVALS_UPDATED, handleSync);

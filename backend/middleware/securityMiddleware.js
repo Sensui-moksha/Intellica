@@ -47,42 +47,50 @@ const helmetMiddleware = helmet({
 /** Generic auth limiter — prevents credential stuffing & brute force */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,  // 15 minutes
-  max: 30,                     // 30 requests per window per IP
+  max: process.env.NODE_ENV === "production" ? 100 : 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many login attempts. Please try again in 15 minutes." },
-  skipSuccessfulRequests: false,
+  skip: (req) => {
+    if (process.env.NODE_ENV !== "production") return true;
+    return req.ip === "127.0.0.1" || req.ip === "::1" || req.ip === "::ffff:127.0.0.1";
+  }
 });
 
 /** OTP verification limiter — harder limit to prevent brute-forcing 6-digit code */
 const otpLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,  // 10 minutes
-  max: 10,                     // Only 10 OTP attempts per window
+  max: process.env.NODE_ENV === "production" ? 20 : 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many OTP attempts. Please wait 10 minutes before trying again." },
   skipSuccessfulRequests: true,
+  skip: (req) => {
+    if (process.env.NODE_ENV !== "production") return true;
+    return false;
+  }
 });
 
 /** Registration limiter — prevents mass account creation */
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,  // 1 hour
-  max: 5,                      // Max 5 registrations per hour per IP
+  max: process.env.NODE_ENV === "production" ? 20 : 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many registration attempts. Please try again in an hour." },
+  skip: (req) => process.env.NODE_ENV !== "production"
 });
 
 /** General API limiter — protects non-auth endpoints */
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,        // 1 minute
-  max: 200,                    // 200 requests per minute
+  max: process.env.NODE_ENV === "production" ? 2000 : 10000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests. Please slow down." },
   skip: (req) => {
-    // Skip rate limiting for static files
-    return req.path.startsWith("/uploads");
+    if (process.env.NODE_ENV !== "production") return true;
+    return req.path.startsWith("/uploads") || req.path.startsWith("/api/health") || req.ip === "127.0.0.1" || req.ip === "::1" || req.ip === "::ffff:127.0.0.1";
   }
 });
 

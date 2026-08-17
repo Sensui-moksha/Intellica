@@ -39,7 +39,7 @@ export default function NotificationsPage() {
 
     // Real-time subscription & periodic polling
     const unsub = subscribeToRealtimeEvent(SYNC_EVENTS.NOTIFICATIONS_UPDATED, () => loadNotifications(false));
-    const interval = setInterval(() => loadNotifications(false), 5000);
+    const interval = setInterval(() => loadNotifications(false), 25000);
 
     const handleFocus = () => loadNotifications(false);
     window.addEventListener('focus', handleFocus);

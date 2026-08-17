@@ -93,8 +93,8 @@ export default function MyActivities() {
   useEffect(() => {
     loadActivities(true);
 
-    // Live background polling every 5s + window focus + broadcast sync
-    const interval = setInterval(() => loadActivities(false), 5000);
+    // Fallback background polling every 25s (Socket.IO handles real-time push)
+    const interval = setInterval(() => loadActivities(false), 25000);
     const handleSync = () => loadActivities(false);
 
     const unsubBroadcast = subscribeToRealtimeEvent(SYNC_EVENTS.APPROVALS_UPDATED, handleSync);
