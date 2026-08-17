@@ -7,7 +7,7 @@ import {
 import PBASSection from './PBASSection';
 import PBASScoreSummary from './PBASScoreSummary';
 import { calculatePBAS } from './pbasClientCalculator';
-import { pbasApi } from '../../api/services';
+import { pbasApi, academicYearApi } from '../../api/services';
 
 // ── PBAS Rule definitions (imported inline to avoid backend dependency) ────
 // These are fetched from the API on mount
@@ -49,6 +49,7 @@ export default function PBASAppraisalModal({ isOpen, onClose, facultyName, desig
   // ── State ─────────────────────────────────────────────────────────────────
   const [role, setRole] = useState('');
   const [academicYear, setAcademicYear] = useState(getDefaultAcademicYear());
+  const [academicYearList, setAcademicYearList] = useState([]);
   const [activeSemester, setActiveSemester] = useState(1);
   const [rules, setRules] = useState(null);
   const [loadingRules, setLoadingRules] = useState(false);
@@ -80,6 +81,20 @@ export default function PBASAppraisalModal({ isOpen, onClose, facultyName, desig
       setRole('ASSISTANT_PROFESSOR');
     }
   }, [designation]);
+
+  // ── Load Dynamic Academic Years ──────────────────────────────────────────
+  useEffect(() => {
+    academicYearApi.getAll().then(res => {
+      const list = Array.isArray(res.data) ? res.data : [];
+      if (list.length > 0) {
+        setAcademicYearList(list);
+        const current = list.find(y => y.isCurrent) || list[0];
+        if (current && !academicYear) {
+          setAcademicYear(current.year);
+        }
+      }
+    }).catch(() => {});
+  }, []);
 
   // ── Fetch rules when role changes ─────────────────────────────────────────
   useEffect(() => {
@@ -260,9 +275,17 @@ export default function PBASAppraisalModal({ isOpen, onClose, facultyName, desig
                     onChange={e => setAcademicYear(e.target.value)}
                     className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer appearance-none pr-4"
                   >
-                    {YEAR_OPTIONS.map(y => (
-                      <option key={y} value={y} className="text-slate-900">{y}</option>
-                    ))}
+                    {academicYearList.length > 0 ? (
+                      academicYearList.map(y => (
+                        <option key={y._id || y.year} value={y.year} className="text-slate-900">
+                          {y.label || `AY ${y.year}`} {y.isCurrent ? '★ (Active)' : y.isArchived ? '(Archived)' : ''}
+                        </option>
+                      ))
+                    ) : (
+                      YEAR_OPTIONS.map(y => (
+                        <option key={y} value={y} className="text-slate-900">{y}</option>
+                      ))
+                    )}
                   </select>
                   <ChevronDown className="w-3 h-3 text-white/50 -ml-3" />
                 </div>

@@ -96,9 +96,24 @@ const CATEGORY_REGISTRY = {
   },
 
   Others: {
-  section: "professional",
-  key: "others"
-}
+    section: "professional",
+    key: "others"
+  },
+
+  InnovativeTeaching: {
+    section: "teaching",
+    key: "innovativeTeaching"
+  },
+
+  DeptAdministration: {
+    section: "administrative",
+    key: "deptAdministration"
+  },
+
+  InstitutionalAdmin: {
+    section: "administrative",
+    key: "institutionalAdmin"
+  }
 
 };
 

@@ -5,8 +5,9 @@
  * This script seeds or restores all core institutional data into MongoDB:
  *   1. Institutional Administrator Account
  *   2. Department & HOD Accounts
- *   3. All 20 Academic Categories & Tiered Subcategories (Credit Config)
- *   4. Granular Credit Evaluation Rules (35 CreditRules)
+ *   3. All 23 Academic Categories & Tiered Subcategories across 4 PBAS Sections
+ *   4. Granular Credit Evaluation Rules (38 CreditRules)
+ *   5. College-Wide Academic Years & Archival Cycles
  *
  * Usage:
  *   node seedDatabase.js          (Seeds/updates database safely)
@@ -27,6 +28,7 @@ const Faculty = require("./models/Faculty");
 const Department = require("./models/Department");
 const Category = require("./models/Category");
 const CreditRule = require("./models/CreditRule");
+const AcademicYear = require("./models/AcademicYear");
 
 const isReset = process.argv.includes("--reset");
 
@@ -72,23 +74,49 @@ const SEED_DEPARTMENTS = [
   }
 ];
 
-// ── 3. ALL 20 CATEGORIES & TIERED SUBCATEGORIES ──
-const SEED_CATEGORIES = [
+// ── 3. ACADEMIC YEARS & ARCHIVAL CYCLES ──
+const SEED_ACADEMIC_YEARS = [
   {
-    name: "Publication",
-    section: "rnd",
-    key: "paperPublications",
-    creditPoints: 30,
-    description: "Journal and Conference research publications (Scopus, SCI, UGC)",
+    year: "2026-27",
+    label: "AY 2026-27",
+    isCurrent: false,
+    isArchived: false,
+    description: "Upcoming Academic Cycle • Ready for Activation"
+  },
+  {
+    year: "2025-26",
+    label: "AY 2025-26",
+    isCurrent: true,
+    isArchived: false,
+    description: "Current Active College Academic Year (Open for Submissions)"
+  },
+  {
+    year: "2024-25",
+    label: "AY 2024-25",
+    isCurrent: false,
+    isArchived: true,
+    description: "Archived Academic Cycle (Historical Records)"
+  }
+];
+
+// ── 4. ALL 23 CATEGORIES & TIERED SUBCATEGORIES ACROSS 4 PBAS SECTIONS ──
+const SEED_CATEGORIES = [
+  // ── SECTION I: TEACHING & LEARNING ──
+  {
+    name: "InnovativeTeaching",
+    section: "teaching",
+    key: "innovativeTeaching",
+    creditPoints: 15,
+    description: "ICT tools, pedagogical innovations, modern e-learning development",
     isActive: true,
     subcategories: [
-      { name: "Journal Article (SCI / Scopus Q1)", key: "journal_q1", creditPoints: 40, description: "Top quartile SCI / Scopus indexed peer-reviewed journal" },
-      { name: "Journal Article (Scopus Q2)", key: "journal_q2", creditPoints: 35, description: "Second quartile Scopus indexed journal" },
-      { name: "Journal Article (Scopus Q3)", key: "journal_q3", creditPoints: 30, description: "Third quartile Scopus indexed journal" },
-      { name: "Journal Article (Scopus Q4)", key: "journal_q4", creditPoints: 25, description: "Fourth quartile Scopus indexed journal" },
-      { name: "Journal Article (UGC-CARE / Peer-Reviewed)", key: "journal_ugc", creditPoints: 20, description: "UGC-CARE approved or recognized peer-reviewed journal" }
+      { name: "Developed Full Online E-Content Course", key: "ict_course", creditPoints: 20, description: "Full digital courseware or module" },
+      { name: "Simulations / Virtual Labs / LMS Tools", key: "ict_simulations", creditPoints: 15, description: "Interactive simulations or automated grading tools" },
+      { name: "Multimedia Lectures / Interactive Visuals", key: "ict_multimedia", creditPoints: 10, description: "Recorded lectures and rich presentations" }
     ]
   },
+
+  // ── SECTION II: PROFESSIONAL DEVELOPMENT ──
   {
     name: "Conference",
     section: "professional",
@@ -118,19 +146,6 @@ const SEED_CATEGORIES = [
     ]
   },
   {
-    name: "FDP",
-    section: "rnd",
-    key: "fdp",
-    creditPoints: 15,
-    description: "Faculty Development Programmes and advanced pedagogy courses",
-    isActive: true,
-    subcategories: [
-      { name: "2-Week FDP (≥10 Days / ATAL / NPTEL / AICTE)", key: "fdp_2week", creditPoints: 20, description: "Two-week intensive pedagogy / advanced technical FDP" },
-      { name: "1-Week FDP (5-9 Days)", key: "fdp_1week", creditPoints: 15, description: "One-week approved FDP" },
-      { name: "Short Term Pedagogy / FDP (2-4 Days)", key: "fdp_short", creditPoints: 10, description: "Short-term faculty development programme" }
-    ]
-  },
-  {
     name: "Book",
     section: "professional",
     key: "books",
@@ -146,46 +161,6 @@ const SEED_CATEGORIES = [
     ]
   },
   {
-    name: "IPR",
-    section: "rnd",
-    key: "iprs",
-    creditPoints: 30,
-    description: "Patents (Granted/Published), Copyrights, and Industrial Designs",
-    isActive: true,
-    subcategories: [
-      { name: "Patent Granted (International - USPTO/EPO)", key: "patent_intl_granted", creditPoints: 40, description: "International patent granted" },
-      { name: "Patent Granted (National - Indian Patent Office)", key: "patent_natl_granted", creditPoints: 30, description: "National patent granted" },
-      { name: "Patent Published / Commercialized", key: "patent_published", creditPoints: 20, description: "Official patent published in gazette" },
-      { name: "Copyright / Industrial Design / Trademark Registered", key: "copyright_granted", creditPoints: 15, description: "Registered copyright or design" }
-    ]
-  },
-  {
-    name: "ResearchProject",
-    section: "rnd",
-    key: "researchProjects",
-    creditPoints: 35,
-    description: "External sponsored major and minor research grants",
-    isActive: true,
-    subcategories: [
-      { name: "Major Extramural Sponsored Project (> ₹10 Lakhs)", key: "project_major", creditPoints: 40, description: "DST, SERB, AICTE, ISRO sponsored major grant" },
-      { name: "Minor Sponsored Research Project (≤ ₹10 Lakhs)", key: "project_minor", creditPoints: 25, description: "Government or industry sponsored minor research grant" },
-      { name: "Internal / Institutional Seed Money Project", key: "project_seed", creditPoints: 15, description: "University seed funding for early research" }
-    ]
-  },
-  {
-    name: "Consultancy",
-    section: "rnd",
-    key: "consultancy",
-    creditPoints: 25,
-    description: "Corporate and industrial consultancy assignments",
-    isActive: true,
-    subcategories: [
-      { name: "High Value Industrial Consultancy (> ₹5 Lakhs)", key: "consultancy_high", creditPoints: 35, description: "Major industrial consultancy executed" },
-      { name: "Corporate Technical Consultancy (₹1-5 Lakhs)", key: "consultancy_mid", creditPoints: 25, description: "Industry testing and technical advisory" },
-      { name: "Advisory / Technical Service Consultancy (< ₹1 Lakh)", key: "consultancy_basic", creditPoints: 15, description: "Consultancy and professional advisory" }
-    ]
-  },
-  {
     name: "NPTEL",
     section: "professional",
     key: "nptel",
@@ -197,19 +172,6 @@ const SEED_CATEGORIES = [
       { name: "NPTEL / SWAYAM Elite + Silver (Top 5%)", key: "nptel_silver", creditPoints: 20, description: "Score 75-89% in NPTEL / SWAYAM certification" },
       { name: "NPTEL / SWAYAM Elite (60-74%)", key: "nptel_elite", creditPoints: 15, description: "Elite certification score" },
       { name: "NPTEL / Coursera / edX Successfully Completed", key: "nptel_completed", creditPoints: 10, description: "Successful course completion" }
-    ]
-  },
-  {
-    name: "DoctoralThesis",
-    section: "rnd",
-    key: "doctoralThesis",
-    creditPoints: 25,
-    description: "Doctoral scholar supervision and PhD degree guidance",
-    isActive: true,
-    subcategories: [
-      { name: "PhD Degree Awarded as Principal Supervisor", key: "phd_awarded_main", creditPoints: 35, description: "Sole or primary PhD supervisor" },
-      { name: "PhD Degree Awarded as Co-Supervisor", key: "phd_awarded_co", creditPoints: 25, description: "Joint / Co-supervision of doctoral candidate" },
-      { name: "Ongoing Doctoral Scholar Supervision (Active)", key: "phd_ongoing", creditPoints: 15, description: "Registered scholar guidance" }
     ]
   },
   {
@@ -277,6 +239,101 @@ const SEED_CATEGORIES = [
     ]
   },
   {
+    name: "Others",
+    section: "professional",
+    key: "others",
+    creditPoints: 5,
+    description: "Other recognized academic and research contributions",
+    isActive: true,
+    subcategories: [
+      { name: "Institutional Committee Leadership / Head", key: "other_lead", creditPoints: 15, description: "Chairperson / Convener of major institute committees" },
+      { name: "General Academic / Extension Activity", key: "other_general", creditPoints: 5, description: "Other academic activities" }
+    ]
+  },
+
+  // ── SECTION III: RESEARCH & DEVELOPMENT (R&D) ──
+  {
+    name: "Publication",
+    section: "rnd",
+    key: "paperPublications",
+    creditPoints: 30,
+    description: "Journal and Conference research publications (Scopus, SCI, UGC)",
+    isActive: true,
+    subcategories: [
+      { name: "Journal Article (SCI / Scopus Q1)", key: "journal_q1", creditPoints: 40, description: "Top quartile SCI / Scopus indexed peer-reviewed journal" },
+      { name: "Journal Article (Scopus Q2)", key: "journal_q2", creditPoints: 35, description: "Second quartile Scopus indexed journal" },
+      { name: "Journal Article (Scopus Q3)", key: "journal_q3", creditPoints: 30, description: "Third quartile Scopus indexed journal" },
+      { name: "Journal Article (Scopus Q4)", key: "journal_q4", creditPoints: 25, description: "Fourth quartile Scopus indexed journal" },
+      { name: "Journal Article (UGC-CARE / Peer-Reviewed)", key: "journal_ugc", creditPoints: 20, description: "UGC-CARE approved or recognized peer-reviewed journal" }
+    ]
+  },
+  {
+    name: "FDP",
+    section: "rnd",
+    key: "fdp",
+    creditPoints: 15,
+    description: "Faculty Development Programmes and advanced pedagogy courses",
+    isActive: true,
+    subcategories: [
+      { name: "2-Week FDP (≥10 Days / ATAL / NPTEL / AICTE)", key: "fdp_2week", creditPoints: 20, description: "Two-week intensive pedagogy / advanced technical FDP" },
+      { name: "1-Week FDP (5-9 Days)", key: "fdp_1week", creditPoints: 15, description: "One-week approved FDP" },
+      { name: "Short Term Pedagogy / FDP (2-4 Days)", key: "fdp_short", creditPoints: 10, description: "Short-term faculty development programme" }
+    ]
+  },
+  {
+    name: "IPR",
+    section: "rnd",
+    key: "iprs",
+    creditPoints: 30,
+    description: "Patents (Granted/Published), Copyrights, and Industrial Designs",
+    isActive: true,
+    subcategories: [
+      { name: "Patent Granted (International - USPTO/EPO)", key: "patent_intl_granted", creditPoints: 40, description: "International patent granted" },
+      { name: "Patent Granted (National - Indian Patent Office)", key: "patent_natl_granted", creditPoints: 30, description: "National patent granted" },
+      { name: "Patent Published / Commercialized", key: "patent_published", creditPoints: 20, description: "Official patent published in gazette" },
+      { name: "Copyright / Industrial Design / Trademark Registered", key: "copyright_granted", creditPoints: 15, description: "Registered copyright or design" }
+    ]
+  },
+  {
+    name: "ResearchProject",
+    section: "rnd",
+    key: "researchProjects",
+    creditPoints: 35,
+    description: "External sponsored major and minor research grants",
+    isActive: true,
+    subcategories: [
+      { name: "Major Extramural Sponsored Project (> ₹10 Lakhs)", key: "project_major", creditPoints: 40, description: "DST, SERB, AICTE, ISRO sponsored major grant" },
+      { name: "Minor Sponsored Research Project (≤ ₹10 Lakhs)", key: "project_minor", creditPoints: 25, description: "Government or industry sponsored minor research grant" },
+      { name: "Internal / Institutional Seed Money Project", key: "project_seed", creditPoints: 15, description: "University seed funding for early research" }
+    ]
+  },
+  {
+    name: "Consultancy",
+    section: "rnd",
+    key: "consultancy",
+    creditPoints: 25,
+    description: "Corporate and industrial consultancy assignments",
+    isActive: true,
+    subcategories: [
+      { name: "High Value Industrial Consultancy (> ₹5 Lakhs)", key: "consultancy_high", creditPoints: 35, description: "Major industrial consultancy executed" },
+      { name: "Corporate Technical Consultancy (₹1-5 Lakhs)", key: "consultancy_mid", creditPoints: 25, description: "Industry testing and technical advisory" },
+      { name: "Advisory / Technical Service Consultancy (< ₹1 Lakh)", key: "consultancy_basic", creditPoints: 15, description: "Consultancy and professional advisory" }
+    ]
+  },
+  {
+    name: "DoctoralThesis",
+    section: "rnd",
+    key: "doctoralThesis",
+    creditPoints: 25,
+    description: "Doctoral scholar supervision and PhD degree guidance",
+    isActive: true,
+    subcategories: [
+      { name: "PhD Degree Awarded as Principal Supervisor", key: "phd_awarded_main", creditPoints: 35, description: "Sole or primary PhD supervisor" },
+      { name: "PhD Degree Awarded as Co-Supervisor", key: "phd_awarded_co", creditPoints: 25, description: "Joint / Co-supervision of doctoral candidate" },
+      { name: "Ongoing Doctoral Scholar Supervision (Active)", key: "phd_ongoing", creditPoints: 15, description: "Registered scholar guidance" }
+    ]
+  },
+  {
     name: "ResearchPolicy",
     section: "rnd",
     key: "researchPolicy",
@@ -324,21 +381,37 @@ const SEED_CATEGORIES = [
       { name: "National Corporate / Institutional MoU", key: "mou_natl", creditPoints: 20, description: "Functional academic-industry MoU" }
     ]
   },
+
+  // ── SECTION IV: ADMINISTRATIVE & GOVERNANCE ──
   {
-    name: "Others",
-    section: "professional",
-    key: "others",
-    creditPoints: 5,
-    description: "Other recognized academic and research contributions",
+    name: "DeptAdministration",
+    section: "administrative",
+    key: "deptAdministration",
+    creditPoints: 15,
+    description: "Departmental coordinatorships (NBA, NAAC, Time-table, Exams)",
     isActive: true,
     subcategories: [
-      { name: "Institutional Committee Leadership / Head", key: "other_lead", creditPoints: 15, description: "Chairperson / Convener of major institute committees" },
-      { name: "General Academic / Extension Activity", key: "other_general", creditPoints: 5, description: "Other academic activities" }
+      { name: "Department NBA / NAAC Criteria Lead Coordinator", key: "admin_nba_lead", creditPoints: 20, description: "Accreditation criteria lead" },
+      { name: "Department Academic / Exam / Time-table Coordinator", key: "admin_dept_coord", creditPoints: 15, description: "Core departmental role" },
+      { name: "Laboratory In-charge / Class Teacher", key: "admin_lab_incharge", creditPoints: 10, description: "Lab or class mentorship" }
+    ]
+  },
+  {
+    name: "InstitutionalAdmin",
+    section: "administrative",
+    key: "institutionalAdmin",
+    creditPoints: 20,
+    description: "College-wide institutional leadership (Dean, IQAC, Placement, NSS)",
+    isActive: true,
+    subcategories: [
+      { name: "Dean / Associate Dean / IQAC Director", key: "admin_dean_iqac", creditPoints: 30, description: "Apex institutional leadership" },
+      { name: "Head of Training & Placement / Chief Warden", key: "admin_placement_head", creditPoints: 20, description: "College-wide portfolio head" },
+      { name: "NSS / NCC / Sports / Cultural Convener", key: "admin_extension_convener", creditPoints: 15, description: "Co-curricular extension coordinator" }
     ]
   }
 ];
 
-// ── 4. ALL 35 GRANULAR CREDIT RULES ──
+// ── 5. ALL 38 GRANULAR CREDIT RULES ──
 const SEED_CREDIT_RULES = [
   { category: "Publication", section: "rnd", ruleKey: "journal_scopus_q1", displayName: "Journal - Scopus (Q1)", creditPoints: 40, description: "Highest quartile peer-reviewed Scopus journal" },
   { category: "Publication", section: "rnd", ruleKey: "journal_scopus_q2", displayName: "Journal - Scopus (Q2)", creditPoints: 35, description: "Q2 indexed Scopus journal publication" },
@@ -388,7 +461,11 @@ const SEED_CREDIT_RULES = [
   { category: "MoU", section: "rnd", ruleKey: "mou_active_industry", displayName: "Active Industry MoU Initiator", creditPoints: 20, description: "Formal partnership agreement signed" },
   { category: "GuestLecture", section: "professional", ruleKey: "guest_lecture_keynote", displayName: "Keynote Address / Invited Expert Talk", creditPoints: 15, description: "Resource person at recognized forum" },
   { category: "Certification", section: "professional", ruleKey: "global_certification", displayName: "Global Industry Certification (AWS/Google/CISCO)", creditPoints: 20, description: "Professional proctored certification" },
-  { category: "ResearchPolicy", section: "rnd", ruleKey: "institutional_policy", displayName: "Institutional Research Policy Contribution", creditPoints: 15, description: "Committee framing academic research guidelines" }
+  { category: "ResearchPolicy", section: "rnd", ruleKey: "institutional_policy", displayName: "Institutional Research Policy Contribution", creditPoints: 15, description: "Committee framing academic research guidelines" },
+
+  { category: "InnovativeTeaching", section: "teaching", ruleKey: "teaching_econtent_dev", displayName: "Digital Pedagogy / E-Content Module", creditPoints: 15, description: "ICT based digital course module development" },
+  { category: "DeptAdministration", section: "administrative", ruleKey: "admin_nba_naac_lead", displayName: "NBA / NAAC Criteria Coordinator", creditPoints: 20, description: "Department level accreditation criteria lead" },
+  { category: "InstitutionalAdmin", section: "administrative", ruleKey: "admin_iqac_director", displayName: "IQAC Director / Dean / Chief Warden", creditPoints: 25, description: "Apex institutional governance portfolio" }
 ];
 
 async function seedDatabase(options = {}) {
@@ -415,13 +492,14 @@ async function seedDatabase(options = {}) {
 
     // ── STEP 1: DROP OLD COLLECTIONS IF --reset FLAG IS PROVIDED ──
     if (shouldReset) {
-      console.log("🧹 Reset Mode: Clearing existing users, categories, rules, and departments...");
+      console.log("🧹 Reset Mode: Clearing existing users, categories, rules, academic years, and departments...");
       await Promise.all([
         User.deleteMany({}),
         HOD.deleteMany({}),
         Department.deleteMany({}),
         Category.deleteMany({}),
-        CreditRule.deleteMany({})
+        CreditRule.deleteMany({}),
+        AcademicYear.deleteMany({})
       ]);
       console.log("✅ Collections cleared\n");
     }
@@ -481,7 +559,18 @@ async function seedDatabase(options = {}) {
       console.log(`   ✅ Department: ${dept.code} - ${dept.name} (HOD: ${dept.hod})`);
     }
 
-    // ── STEP 5: SEED CATEGORIES & TIERED SUBCATEGORIES ──
+    // ── STEP 5: SEED ACADEMIC YEARS ──
+    console.log("\n📅 Seeding Academic Years & Archival Cycles...");
+    for (const ay of SEED_ACADEMIC_YEARS) {
+      const academicYear = await AcademicYear.findOneAndUpdate(
+        { year: ay.year },
+        { ...ay },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+      console.log(`   ✅ Academic Year: ${academicYear.year} (${academicYear.label}) - ${academicYear.isCurrent ? '★ ACTIVE' : (academicYear.isArchived ? 'CLOCK ARCHIVED' : 'UPCOMING')}`);
+    }
+
+    // ── STEP 6: SEED CATEGORIES & TIERED SUBCATEGORIES ──
     console.log("\n📑 Seeding Categories & Tiered Subcategories (Credit Config)...");
     let totalSubCount = 0;
     for (const cat of SEED_CATEGORIES) {
@@ -504,7 +593,7 @@ async function seedDatabase(options = {}) {
     }
     console.log(`   🎯 Total Categories: ${SEED_CATEGORIES.length}, Total Subcategories: ${totalSubCount}`);
 
-    // ── STEP 6: SEED CREDIT RULES ──
+    // ── STEP 7: SEED CREDIT RULES ──
     console.log("\n⚖️  Seeding Granular Credit Rules...");
     for (const rule of SEED_CREDIT_RULES) {
       await CreditRule.findOneAndUpdate(
@@ -543,6 +632,7 @@ module.exports = {
   seedDatabase,
   SEED_USERS,
   SEED_DEPARTMENTS,
+  SEED_ACADEMIC_YEARS,
   SEED_CATEGORIES,
   SEED_CREDIT_RULES
 };

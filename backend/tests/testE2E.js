@@ -233,6 +233,44 @@ async function runLiveE2ETests() {
 
     assert(adminAllRes.status === 200, "GET /api/pbas/all/2025-26 (Admin) returned 200 OK");
     assert(Array.isArray(adminAllRes.data), `Admin retrieved all appraisals: count = ${adminAllRes.data?.length}`);
+
+    // 10. Test GET /api/academic-years (Public/Authenticated)
+    const ayRes = await request({
+      hostname: 'localhost',
+      port: 5001,
+      path: '/api/academic-years',
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    });
+    assert(ayRes.status === 200, "GET /api/academic-years returned 200 OK");
+    assert(Array.isArray(ayRes.data) && ayRes.data.length > 0, `Academic years count = ${ayRes.data?.length}`);
+
+    // 11. Test POST /api/academic-years (Admin creates test year)
+    const testYearCode = `2027-28-test-${Date.now()}`;
+    const newAyRes = await request({
+      hostname: 'localhost',
+      port: 5001,
+      path: '/api/academic-years',
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' }
+    }, {
+      year: testYearCode,
+      label: 'AY 2027-2028 Test',
+      description: 'Future test cycle'
+    });
+    assert(newAyRes.status === 201, "POST /api/academic-years (Admin Create) returned 201 Created");
+
+    // Clean up the created test year
+    const createdId = newAyRes.data?.academicYear?._id;
+    if (createdId) {
+      await request({
+        hostname: 'localhost',
+        port: 5001,
+        path: `/api/academic-years/${createdId}`,
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      });
+    }
   } catch (err) {
     assert(false, "Admin appraisals test failed", err);
   }

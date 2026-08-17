@@ -6,7 +6,7 @@ import {
   Trophy, Clock, Bookmark, ExternalLink, Shield, MapPin, Calculator
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { adminApi, rankingApi, authApi, activityApi, pbasApi } from '../../api/services';
+import { adminApi, rankingApi, authApi, activityApi, pbasApi, academicYearApi } from '../../api/services';
 import { resolveProfileImageUrl } from '../../components/Header';
 import { subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
 
@@ -28,21 +28,27 @@ export default function AdminDashboard() {
   const [pendingUploads, setPendingUploads] = useState([]);
   const [activities, setActivities] = useState([]);
   const [pbasCount, setPbasCount]   = useState(0);
+  const [activeAcademicYear, setActiveAcademicYear] = useState('2025-26');
   const [loading, setLoading]       = useState(true);
 
   const fetchData = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
-      const [deptsRes, rankRes, statsRes, usersRes, pendingRes, meRes, actRes] = await Promise.all([
+      const currYearRes = await academicYearApi.getCurrent().catch(() => ({ data: { year: '2025-26' } }));
+      const activeYr = currYearRes.data?.year || '2025-26';
+      setActiveAcademicYear(activeYr);
+
+      const [deptsRes, rankRes, statsRes, usersRes, pendingRes, meRes, actRes, pbasRes] = await Promise.all([
         adminApi.getDepartments().catch(() => ({ data: [] })),
-        rankingApi.getRankings().catch(() => ({ data: [] })),
+        rankingApi.getRankings({ academicYear: activeYr }).catch(() => ({ data: [] })),
         adminApi.getActivityStats().catch(() => ({ data: null })),
-        adminApi.getAllUsers().catch(() => ({ data: [] })),
+        adminApi.getAllUsers({ academicYear: activeYr }).catch(() => ({ data: [] })),
         adminApi.getPendingUploads().catch(() => ({ data: [] })),
         authApi.getMe().catch(() => null),
         activityApi.getActivities().catch(() => ({ data: { activities: [] } })),
-        pbasApi.getAllAppraisals('2025-26').catch(() => ({ data: [] }))
+        pbasApi.getAllAppraisals(activeYr).catch(() => ({ data: [] }))
       ]);
+
       const pbasAppraisals = Array.isArray(pbasRes?.data) ? pbasRes.data : [];
       setPbasCount(pbasAppraisals.length);
       setDepts(deptsRes.data?.departments || deptsRes.data || []);
@@ -205,7 +211,7 @@ export default function AdminDashboard() {
               </div>
 
               <p className="text-xs text-slate-300 font-medium pt-0.5">
-                College-Wide Governance & Credit Validation • Academic Year {new Date().getFullYear()}
+                College-Wide Governance & Credit Validation • Academic Year {activeAcademicYear}
               </p>
             </div>
           </div>
@@ -279,7 +285,7 @@ export default function AdminDashboard() {
         <div className="flex items-center gap-3">
           <div className="text-right">
             <p className="text-lg font-black text-indigo-700 tabular-nums">{pbasCount} <span className="text-xs font-bold text-slate-400">Submissions</span></p>
-            <p className="text-[10px] font-bold text-slate-400">Academic Year 2025-26</p>
+            <p className="text-[10px] font-bold text-slate-400">Academic Year {activeAcademicYear}</p>
           </div>
           <Link
             to="/admin/faculty"

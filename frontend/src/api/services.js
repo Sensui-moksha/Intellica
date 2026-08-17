@@ -58,8 +58,8 @@ export const hodApi = {
 
 /* ── ADMIN ── */
 export const adminApi = {
-  getAllUsers:           ()          => api.get('/admin/all-users'),
-  getAllFaculty:         ()          => api.get('/admin/faculty'),
+  getAllUsers:           (params)    => api.get('/admin/all-users', { params }),
+  getAllFaculty:         (params)    => api.get('/admin/faculty', { params }),
   createFaculty:         (data)      => api.post('/admin/faculty', data),
   updateFaculty:         (id, data)  => api.put(`/admin/faculty/${id}`, data),
   deleteFaculty:         (id)        => api.delete(`/admin/faculty/${id}`),
@@ -116,7 +116,7 @@ export const creditConfigApi = {
 
 /* ── RANKINGS ── */
 export const rankingApi = {
-  getRankings:        ()          => api.get('/ranking'),
+  getRankings:        (params)    => api.get('/ranking', { params }),
   getMyRank:          ()          => api.get('/rank'),
 };
 
@@ -156,5 +156,15 @@ export const pbasApi = {
   getForReview:       (fId, year) => api.get(`/pbas/review/${fId}/${year}`),
   getDeptAppraisals:  (year)      => api.get(`/pbas/department/${year}`),
   getAllAppraisals:    (year)      => api.get(`/pbas/all/${year}`),
+};
+
+/* ── ACADEMIC YEARS & ARCHIVAL ── */
+export const academicYearApi = {
+  getAll:             ()          => api.get('/academic-years'),
+  getCurrent:         ()          => api.get('/academic-years/current'),
+  create:             (data)      => api.post('/academic-years', data),
+  setCurrent:         (id)        => api.put(`/academic-years/${id}/set-current`),
+  update:             (id, data)  => api.put(`/academic-years/${id}`, data),
+  delete:             (id)        => api.delete(`/academic-years/${id}`),
 };
 

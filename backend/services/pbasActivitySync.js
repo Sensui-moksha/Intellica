@@ -33,11 +33,12 @@ async function autoPopulateFromActivities(facultyId, academicYear = "2025-26", e
     status: { $in: APPROVED_STATUSES }
   }).lean();
 
-  const semester1 = JSON.parse(JSON.stringify(existingInputs.semester1 || existingInputs || {}));
-  if (!semester1.teaching) semester1.teaching = {};
-  if (!semester1.professional) semester1.professional = {};
-  if (!semester1.research) semester1.research = {};
-  if (!semester1.administrative) semester1.administrative = {};
+  const semester1 = {
+    teaching: JSON.parse(JSON.stringify(existingInputs?.semester1?.teaching || existingInputs?.teaching || {})),
+    professional: {},
+    research: {},
+    administrative: {},
+  };
 
   const synced = {
     books: 0,

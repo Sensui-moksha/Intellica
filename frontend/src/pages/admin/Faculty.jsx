@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Download, Plus, Search, Loader2, CheckCircle2,
   Clock, Trash2, Edit3, X, AlertTriangle, CheckSquare, Square,
-  Mail, User, RefreshCw, ShieldCheck, Crown, Calculator
+  Mail, User, RefreshCw, ShieldCheck, Crown, Calculator, CalendarDays, Calendar
 } from 'lucide-react';
-import { adminApi, pbasApi } from '../../api/services';
+import { adminApi, pbasApi, academicYearApi } from '../../api/services';
 
 export default function AdminFaculty() {
   const [searchParams] = useSearchParams();
@@ -24,6 +24,8 @@ export default function AdminFaculty() {
   // Selection for Multiple Delete
   const [selectedIds, setSelectedIds]       = useState([]);
   const [pbasMap, setPbasMap]               = useState({});
+  const [academicYears, setAcademicYears]     = useState([]);
+  const [selectedYear, setSelectedYear]       = useState('2025-26');
 
   // Modals & Toasts
   const [showModal, setShowModal]           = useState(false);
@@ -52,14 +54,14 @@ export default function AdminFaculty() {
     setTimeout(() => setToastMsg(''), 3500);
   };
 
-  const loadData = () => {
+  const loadData = (yearToLoad = selectedYear) => {
     setLoading(true);
     setErrorMsg('');
     Promise.all([
-      adminApi.getAllFaculty(),
+      adminApi.getAllFaculty({ academicYear: yearToLoad }),
       adminApi.getPendingFaculty(),
       adminApi.getDepartments(),
-      pbasApi.getAllAppraisals('2025-26').catch(() => ({ data: [] }))
+      pbasApi.getAllAppraisals(yearToLoad).catch(() => ({ data: [] }))
     ]).then(([allRes, pendRes, deptRes, pbasRes]) => {
       const allData  = Array.isArray(allRes.data) ? allRes.data : allRes.data?.faculty || [];
       const pendData = Array.isArray(pendRes.data) ? pendRes.data : pendRes.data?.faculty || [];
@@ -84,7 +86,19 @@ export default function AdminFaculty() {
   };
 
   useEffect(() => {
-    loadData();
+    academicYearApi.getAll().then(res => {
+      const list = Array.isArray(res.data) ? res.data : [];
+      setAcademicYears(list);
+      const current = list.find(y => y.isCurrent) || list[0];
+      if (current) {
+        setSelectedYear(current.year);
+        loadData(current.year);
+      } else {
+        loadData('2025-26');
+      }
+    }).catch(() => {
+      loadData('2025-26');
+    });
   }, []);
 
   // Selection Logic
@@ -409,6 +423,34 @@ export default function AdminFaculty() {
           {departments.map(d => <option key={d} value={d}>{d}</option>)}
           <option value="ADMINISTRATION">Administration</option>
         </select>
+
+        {/* Academic Year Filter */}
+        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50/50 border rounded-xl" style={{ borderColor: '#e2e8f0' }}>
+          <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+          <select
+            value={selectedYear}
+            onChange={e => {
+              const newY = e.target.value;
+              setSelectedYear(newY);
+              loadData(newY);
+            }}
+            className="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer"
+          >
+            {academicYears.length > 0 ? (
+              academicYears.map(y => (
+                <option key={y._id || y.year} value={y.year}>
+                  {y.label || `AY ${y.year}`} {y.isCurrent ? '★ (Active)' : y.isArchived ? '(Archived)' : ''}
+                </option>
+              ))
+            ) : (
+              <>
+                <option value="2026-27">AY 2026-27</option>
+                <option value="2025-26">AY 2025-26 (Active)</option>
+                <option value="2024-25">AY 2024-25 (Archived)</option>
+              </>
+            )}
+          </select>
+        </div>
 
         {/* Bulk Delete Button */}
         {selectedIds.length > 0 && (

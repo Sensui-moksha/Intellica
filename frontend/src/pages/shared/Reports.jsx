@@ -8,7 +8,7 @@ import {
   AlertCircle, ShieldCheck, Mail, Briefcase, GraduationCap,
   Eye, FileCheck, Search, X, Layers, Calculator
 } from 'lucide-react';
-import { reportApi, authApi, pbasApi } from '../../api/services';
+import { reportApi, authApi, pbasApi, academicYearApi } from '../../api/services';
 import { resolveProfileImageUrl, getDocumentUrl } from '../../components/Header';
 import { subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
 import PBASAppraisalModal from '../../components/pbas/PBASAppraisalModal';
@@ -27,16 +27,18 @@ export default function ReportsAndAnalytics() {
   const [pbasMap, setPbasMap]                 = useState({});
   const [searchQuery, setSearchQuery]         = useState('');
   const [activeWorkTab, setActiveWorkTab]     = useState('ALL');
+  const [academicYears, setAcademicYears]     = useState([]);
+  const [selectedYear, setSelectedYear]       = useState('2025-26');
 
   const role = localStorage.getItem('role') || 'ADMIN';
   const isHOD = role === 'HOD';
 
-  const loadAnalytics = async (isSilent = false) => {
+  const loadAnalytics = async (isSilent = false, yearToLoad = selectedYear) => {
     if (!isSilent) setLoading(true);
     try {
       const [res, pbasRes] = await Promise.all([
-        reportApi.getAnalytics(),
-        pbasApi.getAllAppraisals('2025-26').catch(() => ({ data: [] }))
+        reportApi.getAnalytics({ year: yearToLoad }),
+        pbasApi.getAllAppraisals(yearToLoad).catch(() => ({ data: [] }))
       ]);
       setData(res.data || { departments: [], role });
       // If HOD, automatically select their single department
@@ -56,6 +58,22 @@ export default function ReportsAndAnalytics() {
       if (!isSilent) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    academicYearApi.getAll().then(res => {
+      const list = Array.isArray(res.data) ? res.data : [];
+      setAcademicYears(list);
+      const current = list.find(y => y.isCurrent) || list[0];
+      if (current) {
+        setSelectedYear(current.year);
+        loadAnalytics(false, current.year);
+      } else {
+        loadAnalytics(false, '2025-26');
+      }
+    }).catch(() => {
+      loadAnalytics(false, '2025-26');
+    });
+  }, []);
 
   useEffect(() => {
     loadAnalytics(false);
@@ -181,8 +199,12 @@ export default function ReportsAndAnalytics() {
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">
               {selectedDept ? `${selectedDept.department} Department Analytics` : 'Reports & Analytics'}
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200/60 text-[11px] font-black">
-              AY 2026
+            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black border ${
+              academicYears.find(y => y.year === selectedYear)?.isArchived
+                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                : 'bg-blue-50 text-blue-700 border-blue-200/60'
+            }`}>
+              AY {selectedYear} {academicYears.find(y => y.year === selectedYear)?.isArchived ? '(Archived)' : '(Active)'}
             </span>
           </div>
           <p className="text-slate-500 text-xs mt-1">
@@ -193,6 +215,34 @@ export default function ReportsAndAnalytics() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Academic Year Filter Dropdown */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-xl shadow-2xs">
+            <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <select
+              value={selectedYear}
+              onChange={(e) => {
+                const newY = e.target.value;
+                setSelectedYear(newY);
+                loadAnalytics(false, newY);
+              }}
+              className="text-xs font-bold text-slate-800 bg-transparent outline-none cursor-pointer pr-1"
+            >
+              {academicYears.length > 0 ? (
+                academicYears.map(y => (
+                  <option key={y._id || y.year} value={y.year}>
+                    {y.label || `AY ${y.year}`} {y.isCurrent ? '★ (Active)' : y.isArchived ? '(Archived)' : ''}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="2026-27">AY 2026-27 (Upcoming)</option>
+                  <option value="2025-26">AY 2025-26 ★ (Active)</option>
+                  <option value="2024-25">AY 2024-25 (Archived)</option>
+                </>
+              )}
+            </select>
+          </div>
+
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-3.5 py-2 rounded-xl text-xs font-bold shadow-2xs transition-colors cursor-pointer"
@@ -202,6 +252,16 @@ export default function ReportsAndAnalytics() {
           </button>
         </div>
       </motion.div>
+
+      {/* Archival Notice Banner */}
+      {academicYears.find(y => y.year === selectedYear)?.isArchived && (
+        <div className="flex items-center gap-2.5 p-3.5 bg-gradient-to-r from-amber-50 to-orange-50/60 border border-amber-200/80 rounded-2xl text-amber-900 text-xs shadow-2xs">
+          <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+          <span>
+            <strong>Historical / Archived Academic Year View (AY {selectedYear}):</strong> You are viewing preserved historical records and finalized PBAS appraisals for this past academic year.
+          </span>
+        </div>
+      )}
 
       {/* ── TOP KPI SUMMARY CARDS ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

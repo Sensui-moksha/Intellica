@@ -11,17 +11,17 @@ import { emitRealtimeEvent, subscribeToRealtimeEvent, SYNC_EVENTS } from '../../
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
 
 export default function AdminApprovals() {
-  const [activeTab, setActiveTab]         = useState('PENDING'); // 'PENDING' | 'APPROVED' | 'REJECTED'
-  const [pendingQueue, setPendingQueue]   = useState([]);
+  const [activeTab, setActiveTab] = useState('PENDING'); // 'PENDING' | 'APPROVED' | 'REJECTED'
+  const [pendingQueue, setPendingQueue] = useState([]);
   const [approvedQueue, setApprovedQueue] = useState([]);
   const [rejectedQueue, setRejectedQueue] = useState([]);
-  const [departments, setDepartments]     = useState([]);
-  const [selectedDept, setSelectedDept]   = useState('ALL');
+  const [departments, setDepartments] = useState([]);
+  const [selectedDept, setSelectedDept] = useState('ALL');
 
   const [selected, setSelected] = useState(null);
-  const [loading, setLoading]   = useState(true);
-  const [acting, setActing]     = useState(false);
-  const [search, setSearch]     = useState('');
+  const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState(false);
+  const [search, setSearch] = useState('');
   const [isDocFullscreen, setIsDocFullscreen] = useState(false);
   const [docLoadError, setDocLoadError] = useState(false);
 
@@ -279,51 +279,45 @@ export default function AdminApprovals() {
         <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-2xl border border-slate-200/80 shrink-0">
           <button
             onClick={() => handleTabChange('PENDING')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'PENDING'
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'PENDING'
                 ? 'bg-white text-blue-600 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
-            }`}
+              }`}
           >
             <Clock className="w-3.5 h-3.5 text-amber-500" />
             <span>Pending HOD Approvals</span>
-            <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-extrabold ${
-              activeTab === 'PENDING' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'
-            }`}>
+            <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-extrabold ${activeTab === 'PENDING' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'
+              }`}>
               {pendingQueue.length}
             </span>
           </button>
 
           <button
             onClick={() => handleTabChange('APPROVED')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'APPROVED'
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'APPROVED'
                 ? 'bg-white text-emerald-600 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
-            }`}
+              }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
             <span>Approved Submissions</span>
-            <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-extrabold ${
-              activeTab === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
-            }`}>
+            <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-extrabold ${activeTab === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
+              }`}>
               {approvedQueue.length}
             </span>
           </button>
 
           <button
             onClick={() => handleTabChange('REJECTED')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'REJECTED'
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'REJECTED'
                 ? 'bg-white text-rose-600 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
-            }`}
+              }`}
           >
             <XCircle className="w-3.5 h-3.5 text-rose-500" />
             <span>Rejected Submissions</span>
-            <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-extrabold ${
-              activeTab === 'REJECTED' ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-slate-600'
-            }`}>
+            <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-extrabold ${activeTab === 'REJECTED' ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-slate-600'
+              }`}>
               {rejectedQueue.length}
             </span>
           </button>
@@ -337,16 +331,14 @@ export default function AdminApprovals() {
           whileHover={{ y: -1 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => handleDeptSelect('ALL')}
-          className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-            selectedDept === 'ALL'
+          className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${selectedDept === 'ALL'
               ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white border-blue-600 shadow-md shadow-blue-500/25 ring-2 ring-blue-400/40'
               : 'bg-white text-slate-800 border-slate-200/80 hover:border-slate-300 hover:shadow-2xs'
-          }`}
+            }`}
         >
           <div className="flex items-center justify-between mb-1.5">
-            <span className={`text-[10px] font-extrabold uppercase tracking-wider ${
-              selectedDept === 'ALL' ? 'text-blue-100' : 'text-slate-400'
-            }`}>
+            <span className={`text-[10px] font-extrabold uppercase tracking-wider ${selectedDept === 'ALL' ? 'text-blue-100' : 'text-slate-400'
+              }`}>
               College-Wide
             </span>
             <Building2 className={`w-4 h-4 ${selectedDept === 'ALL' ? 'text-white' : 'text-blue-600'}`} />
@@ -354,11 +346,10 @@ export default function AdminApprovals() {
           <div>
             <span className="text-xs font-black block truncate">All Departments</span>
             <div className="flex items-center gap-1.5 mt-1">
-              <span className={`text-[11px] font-extrabold px-1.5 py-0.2 rounded-md ${
-                selectedDept === 'ALL'
+              <span className={`text-[11px] font-extrabold px-1.5 py-0.2 rounded-md ${selectedDept === 'ALL'
                   ? 'bg-white/20 text-white'
                   : 'bg-blue-50 text-blue-700'
-              }`}>
+                }`}>
                 {currentList.length} {activeTab === 'PENDING' ? 'pending at HOD' : activeTab.toLowerCase()}
               </span>
             </div>
@@ -376,34 +367,30 @@ export default function AdminApprovals() {
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => handleDeptSelect(dept)}
-              className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                isSelected
+              className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${isSelected
                   ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white border-blue-600 shadow-md shadow-blue-500/25 ring-2 ring-blue-400/40'
                   : stats.count > 0
                     ? 'bg-white text-slate-800 border-slate-200/80 hover:border-blue-300 hover:shadow-2xs'
                     : 'bg-slate-50/70 text-slate-500 border-slate-200/50 hover:bg-white'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between mb-1.5">
-                <span className={`text-[10px] font-extrabold uppercase tracking-wider ${
-                  isSelected ? 'text-blue-100' : 'text-slate-400'
-                }`}>
+                <span className={`text-[10px] font-extrabold uppercase tracking-wider ${isSelected ? 'text-blue-100' : 'text-slate-400'
+                  }`}>
                   Dept
                 </span>
-                <span className={`w-2 h-2 rounded-full ${
-                  stats.count > 0 ? (isSelected ? 'bg-emerald-300' : 'bg-emerald-500') : 'bg-slate-300'
-                }`} />
+                <span className={`w-2 h-2 rounded-full ${stats.count > 0 ? (isSelected ? 'bg-emerald-300' : 'bg-emerald-500') : 'bg-slate-300'
+                  }`} />
               </div>
               <div>
                 <span className="text-xs font-black block truncate">{dept}</span>
                 <div className="flex items-center gap-1.5 mt-1">
-                  <span className={`text-[11px] font-extrabold px-1.5 py-0.2 rounded-md ${
-                    isSelected
+                  <span className={`text-[11px] font-extrabold px-1.5 py-0.2 rounded-md ${isSelected
                       ? 'bg-white/20 text-white'
                       : stats.count > 0
                         ? 'bg-blue-50 text-blue-700'
                         : 'bg-slate-100 text-slate-400'
-                  }`}>
+                    }`}>
                     {stats.count} {activeTab === 'PENDING' ? 'pending' : activeTab.toLowerCase()}
                   </span>
                   {stats.credits > 0 && (
@@ -473,8 +460,7 @@ export default function AdminApprovals() {
                         setActionComment('');
                         setDocLoadError(false);
                       }}
-                      className={`w-full text-left p-3.5 rounded-2xl border transition-all cursor-pointer ${
-                        isSel
+                      className={`w-full text-left p-3.5 rounded-2xl border transition-all cursor-pointer ${isSel
                           ? activeTab === 'REJECTED'
                             ? 'border-rose-300 bg-rose-50/70 shadow-xs'
                             : activeTab === 'APPROVED'
@@ -485,7 +471,7 @@ export default function AdminApprovals() {
                           : isReopened
                             ? 'border-amber-200 bg-amber-50/30 hover:bg-amber-50/60'
                             : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-2xs'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-bold text-slate-900 text-xs line-clamp-2">{getItemTitle(item)}</p>
@@ -615,13 +601,12 @@ export default function AdminApprovals() {
                     </div>
                     <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Approval Status</span>
-                      <span className={`text-xs font-extrabold truncate block mt-0.5 ${
-                        ['APPROVED', 'HOD_APPROVED', 'ADMIN_APPROVED'].includes(selected.status)
+                      <span className={`text-xs font-extrabold truncate block mt-0.5 ${['APPROVED', 'HOD_APPROVED', 'ADMIN_APPROVED'].includes(selected.status)
                           ? 'text-emerald-700'
                           : ['REJECTED', 'HOD_REJECTED', 'ADMIN_REJECTED'].includes(selected.status)
                             ? 'text-rose-700'
                             : 'text-amber-700'
-                      }`}>
+                        }`}>
                         {['APPROVED', 'HOD_APPROVED', 'ADMIN_APPROVED'].includes(selected.status)
                           ? 'Approved & Finalized'
                           : ['REJECTED', 'HOD_REJECTED', 'ADMIN_REJECTED'].includes(selected.status)

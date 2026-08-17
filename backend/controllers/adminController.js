@@ -758,10 +758,28 @@ exports.getAllUsers = async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
+    const uploadQuery = {
+      status: { $in: ["ADMIN_APPROVED", "HOD_APPROVED", "APPROVED"] }
+    };
+
+    if (req.query.academicYear) {
+      const parts = req.query.academicYear.split("-");
+      if (parts.length === 2) {
+        const startYear = parseInt(parts[0].length === 2 ? `20${parts[0]}` : parts[0], 10);
+        const endYear = parseInt(parts[1].length === 2 ? `20${parts[1]}` : parts[1], 10);
+        if (!isNaN(startYear) && !isNaN(endYear)) {
+          uploadQuery.$or = [
+            { year: { $in: [startYear, endYear] } },
+            { archivedYear: req.query.academicYear }
+          ];
+        }
+      }
+    }
+
     const [faculty, hods, approvedUploads] = await Promise.all([
       Faculty.find({ isApproved: true }).lean(),
       HOD.find({ isApproved: true }).lean(),
-      Upload.find({ status: "ADMIN_APPROVED" }).lean()
+      Upload.find(uploadQuery).lean()
     ]);
 
     const creditMap = {};
@@ -776,12 +794,12 @@ exports.getAllUsers = async (req, res) => {
       ...faculty.map(f => ({
         ...f,
         role: "FACULTY",
-        totalCredits: creditMap[f._id.toString()] ?? (f.totalCredits || 0)
+        totalCredits: creditMap[f._id.toString()] ?? 0
       })),
       ...hods.map(h => ({
         ...h,
         role: "HOD",
-        totalCredits: creditMap[h._id.toString()] ?? (h.totalCredits || 0)
+        totalCredits: creditMap[h._id.toString()] ?? 0
       }))
     ].sort((a, b) => (b.totalCredits || 0) - (a.totalCredits || 0));
 
@@ -1014,11 +1032,29 @@ exports.getAllFaculty = async (req, res) => {
       return res.status(403).json({ message: "Only Admin can view staff list" });
     }
 
+    const uploadQuery = {
+      status: { $in: ["ADMIN_APPROVED", "HOD_APPROVED", "APPROVED"] }
+    };
+
+    if (req.query.academicYear) {
+      const parts = req.query.academicYear.split("-");
+      if (parts.length === 2) {
+        const startYear = parseInt(parts[0].length === 2 ? `20${parts[0]}` : parts[0], 10);
+        const endYear = parseInt(parts[1].length === 2 ? `20${parts[1]}` : parts[1], 10);
+        if (!isNaN(startYear) && !isNaN(endYear)) {
+          uploadQuery.$or = [
+            { year: { $in: [startYear, endYear] } },
+            { archivedYear: req.query.academicYear }
+          ];
+        }
+      }
+    }
+
     const [facultyList, hodList, adminList, approvedUploads] = await Promise.all([
       Faculty.find().sort({ createdAt: -1 }),
       HOD.find().sort({ createdAt: -1 }),
       User.find({ role: "ADMIN" }).sort({ createdAt: -1 }),
-      Upload.find({ status: "ADMIN_APPROVED" }).lean()
+      Upload.find(uploadQuery).lean()
     ]);
 
     const creditMap = {};
@@ -1047,7 +1083,7 @@ exports.getAllFaculty = async (req, res) => {
         return {
           ...obj,
           role: obj.role || "FACULTY",
-          totalCredits: creditMap[obj._id.toString()] ?? (obj.totalCredits || 0)
+          totalCredits: creditMap[obj._id.toString()] ?? 0
         };
       }),
       ...hodList.map(h => {
@@ -1055,7 +1091,7 @@ exports.getAllFaculty = async (req, res) => {
         return {
           ...obj,
           role: "HOD",
-          totalCredits: creditMap[obj._id.toString()] ?? (obj.totalCredits || 0)
+          totalCredits: creditMap[obj._id.toString()] ?? 0
         };
       })
     ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));

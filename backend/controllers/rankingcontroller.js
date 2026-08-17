@@ -5,11 +5,26 @@ const { rankFaculty } = require("../services/rankingDecisionTree");
 
 exports.getRanking = async (req, res) => {
   try {
+    const uploadQuery = {
+      status: { $in: ["ADMIN_APPROVED", "HOD_APPROVED", "APPROVED"] }
+    };
 
-    // ✅ Step 1: All fully approved uploads (Institutional Admin approved)
-    const uploads = await Upload.find({
-      status: "ADMIN_APPROVED"
-    });
+    if (req.query.academicYear) {
+      const parts = req.query.academicYear.split("-");
+      if (parts.length === 2) {
+        const startYear = parseInt(parts[0].length === 2 ? `20${parts[0]}` : parts[0], 10);
+        const endYear = parseInt(parts[1].length === 2 ? `20${parts[1]}` : parts[1], 10);
+        if (!isNaN(startYear) && !isNaN(endYear)) {
+          uploadQuery.$or = [
+            { year: { $in: [startYear, endYear] } },
+            { archivedYear: req.query.academicYear }
+          ];
+        }
+      }
+    }
+
+    // ✅ Step 1: All approved uploads
+    const uploads = await Upload.find(uploadQuery).lean();
 
     const facultyMap = {};
 
