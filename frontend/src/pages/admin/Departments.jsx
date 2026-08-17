@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Edit3, Trash2, X, Users, Monitor, Cpu, Cog,
   Leaf, FlaskConical, Building2, Loader2, CheckCircle2, AlertTriangle,
-  CheckSquare, Square, Search, Layers, RefreshCw
+  CheckSquare, Square, Search, Layers, RefreshCw, Mail, Award,
+  ArrowRight, ExternalLink, ShieldCheck, Crown, UserPlus, UserCheck,
+  GraduationCap
 } from 'lucide-react';
 import { adminApi } from '../../api/services';
+import { resolveProfileImageUrl } from '../../components/Header';
 
 const DEPT_ICONS = [Monitor, Cpu, Cog, Leaf, FlaskConical, Building2];
 const DEPT_COLORS = [
@@ -18,8 +22,10 @@ const DEPT_COLORS = [
 ];
 
 export default function AdminDepartments() {
+  const navigate = useNavigate();
   const [departments, setDepartments]     = useState([]);
   const [hods, setHods]                   = useState([]);
+  const [allFaculty, setAllFaculty]       = useState([]);
   const [loading, setLoading]             = useState(true);
   const [acting, setActing]               = useState(false);
   const [search, setSearch]               = useState('');
@@ -35,6 +41,11 @@ export default function AdminDepartments() {
   const [toastMsg, setToastMsg]           = useState('');
   const [errorMsg, setErrorMsg]           = useState('');
 
+  // Department Faculty Roster Modal State
+  const [viewFacultyDept, setViewFacultyDept] = useState(null); // dept object or null
+  const [deptFacultySearch, setDeptFacultySearch] = useState('');
+  const [facultyRoleFilter, setFacultyRoleFilter] = useState('ALL'); // 'ALL' | 'HOD' | 'FACULTY'
+
   const [form, setForm]                   = useState({ name: '', code: '', hod: '', description: '' });
 
   const showToast = (msg) => {
@@ -48,21 +59,30 @@ export default function AdminDepartments() {
     Promise.all([
       adminApi.getDepartments(),
       adminApi.getAllHods(),
-    ]).then(([deptRes, hodRes]) => {
+      adminApi.getAllFaculty().catch(() => ({ data: [] })),
+    ]).then(([deptRes, hodRes, facRes]) => {
       const deptsData = Array.isArray(deptRes.data) ? deptRes.data : deptRes.data?.departments || [];
       const hodsData  = hodRes.data || [];
+      const facData   = Array.isArray(facRes.data) ? facRes.data : facRes.data?.faculty || [];
+      
       setHods(hodsData);
+      setAllFaculty(facData);
 
-      const formatted = deptsData.map((d, i) => ({
-        _id: d._id || `dept-${d.name || i}`,
-        name: d.name || d.department || '',
-        code: d.code || d.name || '',
-        hod: d.hod || d.hodName || 'Unassigned',
-        facultyCount: d.facultyCount || 0,
-        credits: d.credits || d.totalCredits || 0,
-        description: d.description || '',
-        colorIdx: i,
-      }));
+      const formatted = deptsData.map((d, i) => {
+        const deptName = (d.name || d.department || '').trim();
+        // Calculate dynamic actual faculty count if available
+        const actualCount = facData.filter(f => (f.department || '').trim().toUpperCase() === deptName.toUpperCase()).length;
+        return {
+          _id: d._id || `dept-${d.name || i}`,
+          name: deptName,
+          code: d.code || deptName,
+          hod: d.hod || d.hodName || 'Unassigned',
+          facultyCount: actualCount > 0 ? actualCount : (d.facultyCount || 0),
+          credits: d.credits || d.totalCredits || 0,
+          description: d.description || '',
+          colorIdx: i,
+        };
+      });
       setDepartments(formatted);
       setSelectedIds([]);
     }).catch(err => {
@@ -88,6 +108,14 @@ export default function AdminDepartments() {
     } else {
       setSelectedIds(filteredDepartments.map(d => d._id));
     }
+  };
+
+  // Open Department Faculty Roster
+  const openDepartmentFaculty = (dept, e) => {
+    e?.stopPropagation();
+    setViewFacultyDept(dept);
+    setDeptFacultySearch('');
+    setFacultyRoleFilter('ALL');
   };
 
   // Create / Update Submit
@@ -184,6 +212,24 @@ export default function AdminDepartments() {
     (d.hod && d.hod.toLowerCase().includes(search.toLowerCase()))
   );
 
+  // Faculty in selected department
+  const currentDeptFaculty = viewFacultyDept
+    ? allFaculty.filter(f => (f.department || '').trim().toUpperCase() === viewFacultyDept.name.trim().toUpperCase())
+    : [];
+
+  const filteredDeptFaculty = currentDeptFaculty.filter(f => {
+    const matchesSearch = 
+      (f.name || '').toLowerCase().includes(deptFacultySearch.toLowerCase()) ||
+      (f.email || '').toLowerCase().includes(deptFacultySearch.toLowerCase()) ||
+      (f.employeeId || f.regId || '').toLowerCase().includes(deptFacultySearch.toLowerCase()) ||
+      (f.designation || '').toLowerCase().includes(deptFacultySearch.toLowerCase());
+
+    const isHod = f.role === 'HOD' || (f.designation || '').toLowerCase().includes('hod');
+    if (facultyRoleFilter === 'HOD') return matchesSearch && isHod;
+    if (facultyRoleFilter === 'FACULTY') return matchesSearch && !isHod;
+    return matchesSearch;
+  });
+
   const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
   const itemVariants = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
 
@@ -194,68 +240,64 @@ export default function AdminDepartments() {
       <motion.div variants={itemVariants} className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Departments</h1>
-          <p className="text-slate-500 text-sm mt-1">Manage academic departments, view credit statistics, and HOD assignments.</p>
+          <p className="text-slate-500 text-sm mt-1">Manage academic departments, view credit statistics, and explore faculty rosters.</p>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={loadData}
-            title="Refresh"
-            className="p-2.5 bg-white border rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-50 shadow-sm transition-colors"
-            style={{ borderColor: '#e2e8f0' }}
+            title="Refresh list"
+            className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors shadow-2xs"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-blue-600' : ''}`} />
           </button>
 
-          <motion.button
-            whileHover={{ y: -1, boxShadow: '0 4px 16px rgba(37,99,235,0.25)' }}
-            whileTap={{ scale: 0.97 }}
+          <button
             onClick={openCreate}
-            className="flex items-center gap-2 text-sm font-semibold text-white px-4 py-2.5 rounded-xl transition-all shadow-sm"
-            style={{ background: '#2563eb' }}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all"
           >
-            <Plus className="w-4 h-4" /> Create Department
-          </motion.button>
+            <Plus className="w-4 h-4" />
+            Create Department
+          </button>
         </div>
       </motion.div>
 
-      {/* Search & Bulk Action Bar */}
-      <motion.div variants={itemVariants} className="flex items-center justify-between gap-3 flex-wrap bg-white p-3.5 rounded-2xl border shadow-sm"
-        style={{ borderColor: '#e8edf5' }}>
-        
-        {/* Search */}
+      {/* Search & Bulk Actions Bar */}
+      <motion.div variants={itemVariants} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-wrap gap-3 items-center justify-between">
         <div className="relative flex-1 min-w-[240px]">
-          <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
+            type="text"
             value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search departments or HODs…"
-            className="w-full pl-10 pr-4 py-1.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-slate-50/50"
-            style={{ borderColor: '#e2e8f0' }}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search departments, codes, or HOD names…"
+            className="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
           />
         </div>
 
-        {/* Selection & Multiple Delete Controls */}
         <div className="flex items-center gap-3">
+          {/* Select All Toggle */}
           <button
+            type="button"
             onClick={selectAll}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl transition-colors"
+            className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-blue-600 px-3 py-2 rounded-xl hover:bg-slate-50 border border-slate-200 transition-colors"
           >
             {selectedIds.length > 0 && selectedIds.length === filteredDepartments.length ? (
               <CheckSquare className="w-4 h-4 text-blue-600" />
             ) : (
               <Square className="w-4 h-4 text-slate-400" />
             )}
-            <span>{selectedIds.length > 0 ? `Deselect (${selectedIds.length})` : 'Select All'}</span>
+            <span>Select All</span>
           </button>
 
+          {/* Bulk Delete Button */}
           {selectedIds.length > 0 && (
             <motion.button
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              type="button"
               onClick={() => setShowBulk(true)}
-              className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors shadow-2xs"
             >
               <Trash2 className="w-3.5 h-3.5" />
               Delete Selected ({selectedIds.length})
@@ -294,12 +336,12 @@ export default function AdminDepartments() {
               <motion.div
                 key={dept._id}
                 variants={itemVariants}
-                whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(0,0,0,0.08)' }}
-                onClick={() => toggleSelectOne(dept._id)}
-                className={`bg-white rounded-2xl p-5 border flex flex-col justify-between transition-all cursor-pointer relative ${
-                  isSelected ? 'ring-2 ring-blue-500 border-blue-300 bg-blue-50/20' : ''
+                whileHover={{ y: -3, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.08)' }}
+                onClick={() => openDepartmentFaculty(dept)}
+                className={`bg-white rounded-2xl p-5 border flex flex-col justify-between transition-all cursor-pointer relative group ${
+                  isSelected ? 'ring-2 ring-blue-500 border-blue-300 bg-blue-50/20' : 'border-slate-200/80 hover:border-blue-300'
                 }`}
-                style={{ borderColor: isSelected ? '#3b82f6' : '#e8edf5', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
+                style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
               >
                 {/* Top row */}
                 <div>
@@ -309,7 +351,7 @@ export default function AdminDepartments() {
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); toggleSelectOne(dept._id); }}
-                        className="text-slate-400 hover:text-blue-600 transition-colors"
+                        className="text-slate-400 hover:text-blue-600 transition-colors p-0.5"
                       >
                         {isSelected ? (
                           <CheckSquare className="w-5 h-5 text-blue-600" />
@@ -326,7 +368,7 @@ export default function AdminDepartments() {
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: '#dbeafe', color: '#1e40af' }}>
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full" style={{ background: '#dbeafe', color: '#1e40af' }}>
                         {dept.credits.toLocaleString()} CR
                       </span>
                       
@@ -351,31 +393,46 @@ export default function AdminDepartments() {
                   </div>
 
                   {/* Dept Name */}
-                  <h3 className="text-base font-bold text-slate-900 mt-3 leading-tight">
+                  <h3 className="text-base font-bold text-slate-900 mt-3 leading-tight group-hover:text-blue-600 transition-colors">
                     {dept.name}
                   </h3>
+                  {dept.description && (
+                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">{dept.description}</p>
+                  )}
                 </div>
 
                 {/* Info rows */}
-                <div className="mt-4 space-y-2 pt-3 border-t" style={{ borderColor: '#f8fafc' }}>
+                <div className="mt-4 space-y-2.5 pt-3 border-t border-slate-100">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5 text-slate-500">
-                      <Users className="w-3.5 h-3.5" />
+                      <Users className="w-3.5 h-3.5 text-slate-400" />
                       <span className={dept.hod === 'Unassigned' ? 'text-rose-500 font-medium' : 'text-slate-800 font-semibold'}>
                         {dept.hod}
                       </span>
                     </div>
                     {dept.hod !== 'Unassigned' && (
-                      <span className="text-[10px] font-semibold px-2 py-0.2 rounded-full"
-                        style={{ background: '#dbeafe', color: '#1d4ed8' }}>HOD</span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100/70 text-blue-700 border border-blue-200/50">
+                        HOD
+                      </span>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-slate-400">
-                    <span>{dept.facultyCount} Active Faculty</span>
+                  {/* Clickable Active Faculty button */}
+                  <div className="flex items-center justify-between text-xs pt-0.5">
                     <button
+                      type="button"
+                      onClick={(e) => openDepartmentFaculty(dept, e)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-50 hover:bg-blue-100/80 text-blue-700 font-bold transition-all border border-blue-200/60 cursor-pointer shadow-2xs group/btn"
+                      title={`View all faculty in ${dept.name}`}
+                    >
+                      <Users className="w-3.5 h-3.5 text-blue-600 group-hover/btn:scale-110 transition-transform" />
+                      <span>{dept.facultyCount} Active Faculty</span>
+                    </button>
+                    
+                    <button
+                      type="button"
                       onClick={(e) => openEdit(dept, e)}
-                      className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1"
+                      className="text-xs font-semibold text-slate-400 hover:text-blue-600 flex items-center gap-1 transition-colors"
                     >
                       Edit Details →
                     </button>
@@ -388,12 +445,224 @@ export default function AdminDepartments() {
       )}
 
       {!loading && filteredDepartments.length === 0 && (
-        <div className="bg-white rounded-2xl border p-12 text-center text-slate-400" style={{ borderColor: '#e8edf5' }}>
+        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400">
           <Layers className="w-12 h-12 text-slate-200 mx-auto mb-3" />
           <p className="font-semibold text-slate-700">No departments found</p>
           <p className="text-xs text-slate-400 mt-1">Create a new department to get started.</p>
         </div>
       )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          DEPARTMENT FACULTY ROSTER MODAL
+      ══════════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {viewFacultyDept && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs"
+              onClick={() => setViewFacultyDept(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-55 w-full max-w-3xl max-h-[88vh] bg-white rounded-3xl p-6 shadow-2xl border border-slate-200/90 flex flex-col"
+            >
+              {/* Modal Header */}
+              <div className="flex items-start justify-between pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-lg border border-blue-100 shrink-0">
+                    <Building2 className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-bold text-slate-900">
+                        {viewFacultyDept.name} Department Faculty
+                      </h2>
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                        {currentDeptFaculty.length} Members
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      HOD: <span className="font-semibold text-slate-700">{viewFacultyDept.hod}</span> · Total Department Credits: <span className="font-semibold text-blue-600">{viewFacultyDept.credits.toLocaleString()} CR</span>
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setViewFacultyDept(null)}
+                  className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-xl transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Filters & Search Inside Modal */}
+              <div className="flex flex-wrap gap-2.5 items-center justify-between py-3">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={deptFacultySearch}
+                    onChange={(e) => setDeptFacultySearch(e.target.value)}
+                    placeholder="Search by faculty name, designation, or ID…"
+                    className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 placeholder:text-slate-400"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl">
+                  {['ALL', 'HOD', 'FACULTY'].map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setFacultyRoleFilter(r)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        facultyRoleFilter === r
+                          ? 'bg-white text-blue-600 shadow-2xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      {r === 'ALL' ? `All (${currentDeptFaculty.length})` : r === 'HOD' ? 'HOD' : 'Faculty'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Faculty List (Scrollable) */}
+              <div className="flex-1 overflow-y-auto pr-1 space-y-2.5 my-2 max-h-[50vh]">
+                {filteredDeptFaculty.length > 0 ? (
+                  filteredDeptFaculty.map((member) => {
+                    const isHod = member.role === 'HOD' || (member.designation || '').toLowerCase().includes('hod');
+                    const profileUrl = resolveProfileImageUrl(member.profileImage);
+
+                    return (
+                      <div
+                        key={member._id}
+                        className="flex items-center justify-between p-3.5 bg-slate-50/70 hover:bg-blue-50/40 border border-slate-200/70 hover:border-blue-200 rounded-2xl transition-all"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {/* Avatar */}
+                          <div className="relative shrink-0">
+                            {profileUrl ? (
+                              <img
+                                src={profileUrl}
+                                alt={member.name}
+                                className="w-10 h-10 rounded-xl object-cover border border-slate-200 shadow-2xs"
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              />
+                            ) : (
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-2xs ${
+                                isHod ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-blue-100 text-blue-800 border border-blue-200'
+                              }`}>
+                                {isHod ? <Crown className="w-5 h-5 text-amber-600" /> : (member.name?.charAt(0)?.toUpperCase() || 'F')}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Member Info */}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-sm font-bold text-slate-900 truncate">
+                                {member.name}
+                              </h4>
+                              {isHod ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                                  <Crown className="w-3 h-3 text-amber-600" />
+                                  Department HOD
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700">
+                                  Faculty
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3 text-xs text-slate-500 mt-1 flex-wrap">
+                              <span className="font-medium text-slate-700">{member.designation || 'Faculty Member'}</span>
+                              <span className="text-slate-300">•</span>
+                              <span className="font-mono text-slate-500">ID: {member.employeeId || member.regId || 'N/A'}</span>
+                              {member.email && (
+                                <>
+                                  <span className="text-slate-300">•</span>
+                                  <a href={`mailto:${member.email}`} className="text-slate-500 hover:text-blue-600 flex items-center gap-1 truncate max-w-[200px]">
+                                    <Mail className="w-3 h-3" />
+                                    {member.email}
+                                  </a>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Credits Pill & View details */}
+                        <div className="flex items-center gap-3 shrink-0 ml-3">
+                          <div className="text-right">
+                            <span className="inline-flex items-center gap-1 text-xs font-extrabold px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <Award className="w-3.5 h-3.5 text-emerald-600" />
+                              {(member.totalCredits || 0).toLocaleString()} CR
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                    <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                    <p className="text-sm font-semibold text-slate-700">No faculty members found</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {deptFacultySearch ? 'Try a different search query' : `No faculty members currently registered in ${viewFacultyDept.name}`}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const deptName = viewFacultyDept.name;
+                    setViewFacultyDept(null);
+                    navigate(`/admin/faculty?dept=${encodeURIComponent(deptName)}`);
+                  }}
+                  className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                >
+                  <span>Open in Full Faculty Directory</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setViewFacultyDept(null)}
+                    className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const deptName = viewFacultyDept.name;
+                      setViewFacultyDept(null);
+                      navigate(`/admin/faculty?dept=${encodeURIComponent(deptName)}`);
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>Manage Faculty Directory</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* CREATE / EDIT MODAL */}
       <AnimatePresence>
@@ -424,72 +693,69 @@ export default function AdminDepartments() {
 
               <form onSubmit={handleSave} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Department Name *</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Department Name *</label>
                   <input
+                    type="text"
                     required
+                    placeholder="e.g. COMPUTER SCIENCE & ENGINEERING"
                     value={form.name}
-                    onChange={e => setForm({ ...form, name: e.target.value })}
-                    placeholder="e.g. COMPUTER SCIENCE"
-                    className="w-full border rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all font-semibold"
-                    style={{ borderColor: '#e2e8f0' }}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 uppercase"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Department Code / Short Key</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Department Code</label>
                   <input
-                    value={form.code}
-                    onChange={e => setForm({ ...form, code: e.target.value })}
+                    type="text"
                     placeholder="e.g. CSE"
-                    className="w-full border rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    style={{ borderColor: '#e2e8f0' }}
+                    value={form.code}
+                    onChange={(e) => setForm({ ...form, code: e.target.value })}
+                    className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 uppercase"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Assign Head of Department (HOD)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Assign Head of Department (HOD)</label>
                   <select
                     value={form.hod}
-                    onChange={e => setForm({ ...form, hod: e.target.value })}
-                    className="w-full border rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white transition-all"
-                    style={{ borderColor: '#e2e8f0' }}
+                    onChange={(e) => setForm({ ...form, hod: e.target.value })}
+                    className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
                   >
-                    <option value="">Unassigned</option>
-                    {hods.map(h => (
-                      <option key={h._id} value={h.name}>
-                        {h.name} ({h.department || 'HOD'})
+                    <option value="">Unassigned (No HOD Assigned)</option>
+                    {hods.map((h) => (
+                      <option key={h._id || h.name} value={h.name}>
+                        {h.name} ({h.department || 'Academic'})
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Description (Optional)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Description (Optional)</label>
                   <textarea
                     rows={2}
+                    placeholder="Brief description of department academic focus..."
                     value={form.description}
-                    onChange={e => setForm({ ...form, description: e.target.value })}
-                    placeholder="Brief description or focus area..."
-                    className="w-full border rounded-xl px-3.5 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none"
-                    style={{ borderColor: '#e2e8f0' }}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    className="w-full text-sm px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
                 </div>
 
-                <div className="flex justify-end gap-2.5 mt-6 pt-4 border-t" style={{ borderColor: '#f1f5f9' }}>
+                <div className="flex gap-2.5 pt-3">
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="px-4 py-2 text-sm text-slate-500 hover:text-slate-800 font-medium transition-colors"
+                    className="flex-1 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    disabled={acting || !form.name.trim()}
-                    className="px-5 py-2 text-white text-sm font-semibold rounded-xl shadow-sm transition-all disabled:opacity-50"
-                    style={{ background: '#2563eb' }}
+                    disabled={acting}
+                    className="flex-1 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm transition-all disabled:opacity-50"
                   >
-                    {acting ? 'Saving…' : editTarget ? 'Save Changes' : 'Create Department'}
+                    {acting ? 'Saving…' : (editTarget ? 'Update' : 'Create')}
                   </button>
                 </div>
               </form>
@@ -498,7 +764,7 @@ export default function AdminDepartments() {
         )}
       </AnimatePresence>
 
-      {/* SINGLE DELETE CONFIRMATION MODAL */}
+      {/* SINGLE DELETE CONFIRM MODAL */}
       <AnimatePresence>
         {deleteTarget && (
           <>
@@ -516,11 +782,13 @@ export default function AdminDepartments() {
               style={{ border: '1px solid #e2e8f0' }}
             >
               <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="w-6 h-6" />
+                <Trash2 className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-bold text-slate-900 text-center">Delete Department?</h3>
+              <h3 className="text-base font-bold text-slate-900 text-center">
+                Delete {deleteTarget.name}?
+              </h3>
               <p className="text-xs text-slate-500 text-center mt-1.5 leading-relaxed">
-                Are you sure you want to remove <span className="font-bold text-slate-800">{deleteTarget.name}</span>? This action cannot be undone.
+                Are you sure you want to remove this department? Faculty members currently assigned to it may need reassignment.
               </p>
               <div className="flex gap-2.5 mt-6">
                 <button
@@ -544,7 +812,7 @@ export default function AdminDepartments() {
         )}
       </AnimatePresence>
 
-      {/* MULTIPLE / BULK DELETE CONFIRMATION MODAL */}
+      {/* BULK DELETE CONFIRM MODAL */}
       <AnimatePresence>
         {showBulkConfirm && (
           <>

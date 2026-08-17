@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Download, Plus, Search, Loader2, CheckCircle2,
@@ -8,12 +9,15 @@ import {
 import { adminApi } from '../../api/services';
 
 export default function AdminFaculty() {
+  const [searchParams] = useSearchParams();
+  const urlDept = searchParams.get('dept') || searchParams.get('department');
+
   const [faculty, setFaculty]               = useState([]);
   const [pendingFaculty, setPending]       = useState([]);
   const [departments, setDepartments]       = useState([]);
   const [tab, setTab]                       = useState('ALL'); // 'ALL' | 'FACULTY' | 'HOD' | 'ADMIN' | 'PENDING'
   const [search, setSearch]                 = useState('');
-  const [deptFilter, setDeptFilter]         = useState('ALL');
+  const [deptFilter, setDeptFilter]         = useState(urlDept || 'ALL');
   const [loading, setLoading]               = useState(true);
   const [acting, setActing]                 = useState(false);
 
