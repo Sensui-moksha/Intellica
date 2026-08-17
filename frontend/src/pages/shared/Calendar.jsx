@@ -593,7 +593,7 @@ export default function DepartmentCalendar() {
             </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-3 pr-1 max-h-[500px]">
+          <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 max-h-[720px] pb-4">
             {filteredActivities.map((act) => {
               const display = getActivityDisplay(act);
               const Icon = display.icon;
