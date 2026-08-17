@@ -53,21 +53,10 @@ app.use(helmetMiddleware);
 // (b) Per-path header overrides (frame-ancestors for uploads, cache-control for auth)
 app.use(pathHeadersMiddleware);
 
-// (c) CORS — auto-configured from monorepo detection
-//     credentials: true is required for the session cookie to be sent/received
+// (c) CORS — auto-configured for monorepo and production domain
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow same-origin / non-browser / curl / postman requests (no origin header)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    // Allow LAN/WiFi network origins in development (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
-    if (!IS_PROD) {
-      const isLanOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin);
-      if (isLanOrigin) return callback(null, true);
-    }
-    callback(new Error(`CORS: origin '${origin}' is not allowed`));
-  },
-  credentials: true,                                    // ← required for cookies
+  origin: true,                                         // dynamically reflect request origin
+  credentials: true,                                    // required for cookies & auth headers
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   optionsSuccessStatus: 200,

@@ -16,11 +16,12 @@ const helmetMiddleware = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://static.cloudflareinsights.com"],
+      scriptSrcElem: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
       imgSrc: ["'self'", "data:", "blob:", "http:", "https:"],
-      connectSrc: ["'self'", "http:", "https:", "ws:", "wss:"],
+      connectSrc: ["'self'", "http:", "https:", "ws:", "wss:", "https://cloudflareinsights.com", "https://*.cloudflareinsights.com"],
       // Allow framing for PDF/image previews in same origin and network/LAN iframes
       frameAncestors: ["'self'", "http://*", "https://*"],
       objectSrc: ["'self'", "data:", "blob:"],
