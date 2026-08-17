@@ -699,14 +699,14 @@ export default function AdminApprovals() {
                     <div className="flex items-center justify-between pt-1">
                       <div className="text-xs text-slate-400">
                         {isPending
-                          ? 'Awaiting Departmental / Institutional Review'
+                          ? 'Status: Under Departmental (HOD) Review'
                           : isRejected
                             ? 'Status: Rejected by Authority'
-                            : 'Status: Approved & Credits Finalized'}
+                            : 'Status: Approved by Department (HOD)'}
                       </div>
 
                       <div className="flex items-center gap-2.5">
-                        {/* PENDING ACTIONS */}
+                        {/* PENDING SUBMISSIONS (UNDER HOD REVIEW) */}
                         {isPending && (
                           <>
                             <button
@@ -714,7 +714,7 @@ export default function AdminApprovals() {
                               className="flex items-center gap-1.5 px-3.5 py-2 border rounded-xl text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200 transition-colors cursor-pointer"
                             >
                               <MessageSquare className="w-3.5 h-3.5" />
-                              <span>Needs Revision</span>
+                              <span>Add Audit Note</span>
                             </button>
 
                             <button
@@ -724,42 +724,22 @@ export default function AdminApprovals() {
                               <XCircle className="w-3.5 h-3.5" />
                               <span>Reject</span>
                             </button>
-
-                            <button
-                              disabled={acting}
-                              onClick={() => handleDecision(selected._id, 'APPROVED')}
-                              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
-                            >
-                              <CheckCircle className="w-3.5 h-3.5" />
-                              <span>{acting ? 'Approving…' : 'Final Approve'}</span>
-                            </button>
                           </>
                         )}
 
-                        {/* REJECTED ACTIONS */}
+                        {/* REJECTED SUBMISSIONS */}
                         {isRejected && (
-                          <>
-                            <button
-                              disabled={acting}
-                              onClick={() => handleDecision(selected._id, 'REOPEN')}
-                              className="flex items-center gap-1.5 px-3.5 py-2 border rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border-slate-300 transition-colors cursor-pointer disabled:opacity-50"
-                            >
-                              <Clock className="w-3.5 h-3.5 text-slate-600" />
-                              <span>Move Back to Pending</span>
-                            </button>
-
-                            <button
-                              disabled={acting}
-                              onClick={() => handleDecision(selected._id, 'APPROVED')}
-                              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
-                            >
-                              <CheckCircle className="w-3.5 h-3.5" />
-                              <span>{acting ? 'Validating…' : 'Re-validate & Final Approve'}</span>
-                            </button>
-                          </>
+                          <button
+                            disabled={acting}
+                            onClick={() => handleDecision(selected._id, 'REOPEN')}
+                            className="flex items-center gap-1.5 px-3.5 py-2 border rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border-slate-300 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            <Clock className="w-3.5 h-3.5 text-slate-600" />
+                            <span>Move Back to HOD Review</span>
+                          </button>
                         )}
 
-                        {/* APPROVED ACTIONS - RE-OPEN REVIEW & REVOKE & REJECT */}
+                        {/* APPROVED SUBMISSIONS - AUDIT ACTIONS (RE-OPEN REVIEW & REVOKE & REJECT) */}
                         {isApproved && (
                           <>
                             <button
