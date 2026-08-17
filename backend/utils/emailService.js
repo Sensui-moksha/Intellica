@@ -12,49 +12,39 @@ const transporter = nodemailer.createTransport({
 });
 
 // ─────────────────────────────────────────────────────────────
-// Logo helper
 // ─────────────────────────────────────────────────────────────
+// Logo helper — Uses Base64 Data URI so NO attachment icon appears in Gmail inbox list
+// ─────────────────────────────────────────────────────────────
+let cachedLogoDataUri = null;
 const getLogoSrc = () => {
   if (process.env.EMAIL_LOGO_URL) return process.env.EMAIL_LOGO_URL;
-  return 'cid:mic_logo';
+  if (cachedLogoDataUri) return cachedLogoDataUri;
+  try {
+    const candidates = [
+      path.join(__dirname, '..', 'assets', 'mic_logo.png'),
+      path.join(__dirname, '..', '..', 'frontend', 'src', 'assets', 'mic_logo.png'),
+      path.join(__dirname, '..', '..', 'frontend', 'src', 'assets', 'logo.png')
+    ];
+    const foundPath = candidates.find(p => fs.existsSync(p));
+    if (foundPath) {
+      const fileBuf = fs.readFileSync(foundPath);
+      cachedLogoDataUri = `data:image/png;base64,${fileBuf.toString('base64')}`;
+      return cachedLogoDataUri;
+    }
+  } catch (err) {
+    console.error('Failed to load logo data URI:', err);
+  }
+  return '';
 };
 
 const sendMail = async (mailOptions) => {
   try {
     // Direct all outgoing emails to mokshyagnay@gmail.com
-    const originalTo = mailOptions.to;
     const targetRecipient = process.env.EMAIL_OVERRIDE_TO || 'mokshyagnay@gmail.com';
     mailOptions.to = targetRecipient;
 
-    // Remove any non-inline attachments so images don't appear as bottom attachments in mail clients
-    if (mailOptions.attachments && mailOptions.attachments.length) {
-      mailOptions.attachments = mailOptions.attachments.filter(a => a && (a.cid || a.contentDisposition === 'inline'));
-    }
-
-    // Allow callers to opt out of adding the inline logo (e.g., OTP messages)
-    const skipLogo = mailOptions.skipLogo === true;
-
-    // If no remote logo URL provided and caller didn't skip it, attach local logo as inline CID so <img src="cid:mic_logo"> works
-    if (!process.env.EMAIL_LOGO_URL && !skipLogo) {
-      try {
-        const candidates = [
-          path.join(__dirname, '..', 'assets', 'mic_logo.png'),
-          path.join(__dirname, '..', '..', 'frontend', 'src', 'assets', 'mic_logo.png'),
-          path.join(__dirname, '..', '..', 'frontend', 'src', 'assets', 'logo.png')
-        ];
-        const foundPath = candidates.find(p => fs.existsSync(p));
-        if (foundPath) {
-          mailOptions.attachments = (mailOptions.attachments || []).concat({
-            filename: 'mic_logo.png',
-            path: foundPath,
-            cid: 'mic_logo',
-            contentDisposition: 'inline'
-          });
-        }
-      } catch (err) {
-        console.error('Failed to attach local logo:', err);
-      }
-    }
+    // Ensure zero attachments so Gmail doesn't show an attachment chip in the inbox thread list
+    mailOptions.attachments = [];
 
     await transporter.sendMail(mailOptions);
     console.log('Email sent to', mailOptions.to, 'subject:', mailOptions.subject);
