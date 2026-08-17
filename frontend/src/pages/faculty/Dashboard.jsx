@@ -270,7 +270,7 @@ export default function FacultyDashboard() {
             bg: '#dbeafe'
           },
           {
-            label: 'Department Rank',
+            label: 'Your Rank in Dept',
             value: rankDisplay,
             unit: 'Rank',
             subtext: `Standing in ${facultyDept}`,
