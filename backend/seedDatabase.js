@@ -391,24 +391,30 @@ const SEED_CREDIT_RULES = [
   { category: "ResearchPolicy", section: "rnd", ruleKey: "institutional_policy", displayName: "Institutional Research Policy Contribution", creditPoints: 15, description: "Committee framing academic research guidelines" }
 ];
 
-async function seedDatabase() {
+async function seedDatabase(options = {}) {
   const mongoUri = process.env.MONGO_URI;
   if (!mongoUri) {
     console.error("❌ Error: MONGO_URI is missing in backend/.env");
-    process.exit(1);
+    if (options.disconnect !== false) process.exit(1);
+    return;
   }
+
+  const shouldReset = options.reset !== undefined ? options.reset : isReset;
+  const shouldDisconnect = options.disconnect !== undefined ? options.disconnect : true;
 
   console.log("==========================================================");
   console.log("🚀 INTELLICA DATABASE SEEDER");
-  console.log(`📡 Connecting to MongoDB...`);
   console.log("==========================================================");
 
   try {
-    await mongoose.connect(mongoUri);
-    console.log("✅ Connected to MongoDB successfully\n");
+    if (mongoose.connection.readyState === 0) {
+      console.log(`📡 Connecting to MongoDB...`);
+      await mongoose.connect(mongoUri);
+      console.log("✅ Connected to MongoDB successfully\n");
+    }
 
     // ── STEP 1: DROP OLD COLLECTIONS IF --reset FLAG IS PROVIDED ──
-    if (isReset) {
+    if (shouldReset) {
       console.log("🧹 Reset Mode: Clearing existing users, categories, rules, and departments...");
       await Promise.all([
         User.deleteMany({}),
@@ -519,11 +525,24 @@ async function seedDatabase() {
 
   } catch (err) {
     console.error("❌ Seeding Error:", err);
-    process.exit(1);
+    if (shouldDisconnect) process.exit(1);
+    throw err;
   } finally {
-    await mongoose.disconnect();
-    console.log("👋 Disconnected from MongoDB");
+    if (shouldDisconnect) {
+      await mongoose.disconnect();
+      console.log("👋 Disconnected from MongoDB");
+    }
   }
 }
 
-seedDatabase();
+if (require.main === module) {
+  seedDatabase({ reset: isReset, disconnect: true });
+}
+
+module.exports = {
+  seedDatabase,
+  SEED_USERS,
+  SEED_DEPARTMENTS,
+  SEED_CATEGORIES,
+  SEED_CREDIT_RULES
+};

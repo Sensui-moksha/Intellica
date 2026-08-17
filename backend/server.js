@@ -215,8 +215,22 @@ initSocket(httpServer, allowedOrigins);
 ═══════════════════════════════════════════════════════════════════════════ */
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => {
+  .then(async () => {
     console.log("✅  MongoDB connected");
+
+    // Auto-seed database if SEEDER=true in .env
+    const isSeederEnabled = String(process.env.SEEDER || process.env.seeder || "").trim().toLowerCase() === "true";
+    if (isSeederEnabled) {
+      console.log("🌱  SEEDER=true detected in environment. Running auto-seeder...");
+      try {
+        const { seedDatabase } = require("./seedDatabase");
+        await seedDatabase({ reset: false, disconnect: false });
+        console.log("🌱  Auto-seeding completed successfully.");
+      } catch (seedErr) {
+        console.error("⚠️  Auto-seed warning:", seedErr.message);
+      }
+    }
+
     httpServer.listen(backendPort, () => {
       console.log(`🚀  Intellica API running on http://localhost:${backendPort}`);
       console.log(`🔐  Auth: session-cookie + jwt-bearer (hybrid)`);
