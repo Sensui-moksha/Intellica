@@ -73,6 +73,50 @@ const getCategoryMeta = (name) => {
   if (key.includes('mou')) {
     return { icon: Handshake, color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd', label: 'Institutional MoUs' };
   }
+  // Section I: Teaching
+  if (key.includes('weeklyteaching') || key.includes('teachingload')) {
+    return { icon: Clock, color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd', label: 'Weekly Teaching Load' };
+  }
+  if (key.includes('lectureshandled') || key.includes('lecturestaken')) {
+    return { icon: Presentation, color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc', label: 'Lectures Delivery' };
+  }
+  if (key.includes('coursefile')) {
+    return { icon: FolderPlus, color: '#4f46e5', bg: '#eef2ff', border: '#c7d2fe', label: 'Course File & Mapping' };
+  }
+  if (key.includes('examduties') || key.includes('exam')) {
+    return { icon: CheckSquare, color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe', label: 'Exam Duties' };
+  }
+  if (key.includes('innovativeteaching')) {
+    return { icon: Sparkles, color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', label: 'Innovative Teaching' };
+  }
+  if (key.includes('remedial')) {
+    return { icon: TrendingUp, color: '#d97706', bg: '#fffbeb', border: '#fde68a', label: 'Remedial & Bridge' };
+  }
+  if (key.includes('mentoring') || key.includes('counseling')) {
+    return { icon: Users, color: '#059669', bg: '#ecfdf5', border: '#a7f3d0', label: 'Student Mentoring' };
+  }
+  if (key.includes('passpercentage') || key.includes('passpercent')) {
+    return { icon: Award, color: '#ea580c', bg: '#fff7ed', border: '#fed7aa', label: 'Pass Percentage' };
+  }
+  if (key.includes('studentfeedback') || key.includes('feedback')) {
+    return { icon: Star, color: '#ca8a04', bg: '#fefce8', border: '#fef08a', label: 'Student Feedback' };
+  }
+  // Section IV: Administrative
+  if (key.includes('deptadministration') || key.includes('deptadmin')) {
+    return { icon: Layers, color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc', label: 'Department Admin' };
+  }
+  if (key.includes('institutionaladmin') || key.includes('instadmin')) {
+    return { icon: GraduationCap, color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe', label: 'Institutional Admin' };
+  }
+  if (key.includes('studentactivities')) {
+    return { icon: Rocket, color: '#db2777', bg: '#fdf2f8', border: '#fbcfe8', label: 'Student Activities' };
+  }
+  if (key.includes('accreditation')) {
+    return { icon: ShieldCheck, color: '#059669', bg: '#ecfdf5', border: '#a7f3d0', label: 'Accreditation Support' };
+  }
+  if (key.includes('committees')) {
+    return { icon: Scale, color: '#475569', bg: '#f8fafc', border: '#e2e8f0', label: 'Standing Committees' };
+  }
   return { icon: Sparkles, color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb', label: 'Academic Activity' };
 };
 

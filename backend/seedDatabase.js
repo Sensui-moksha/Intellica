@@ -1,77 +1,66 @@
 /**
- * =============================================================================
- * 🚀 INTELLICA DATABASE SEED SCRIPT (seedDatabase.js)
- * =============================================================================
- * This script seeds or restores all core institutional data into MongoDB:
- *   1. Institutional Administrator Account
- *   2. Department & HOD Accounts
- *   3. All 23 Academic Categories & Tiered Subcategories across 4 PBAS Sections
- *   4. Granular Credit Evaluation Rules (38 CreditRules)
- *   5. College-Wide Academic Years & Archival Cycles
+ * seedDatabase.js — Comprehensive Master Database Seeder for Intellica
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Seeds:
+ *   1. Institutional Administrator (admin / mokshyagnay@gmail.com)
+ *   2. Department HOD (moksha / d.mokshyagnayadav@gmail.com / 23H71A0575!)
+ *   3. Core Academic Departments (CSE, ECE, MECH, CIVIL, IT, EEE, CHEMICAL)
+ *   4. Academic Years & Archival Cycles (2026-27, 2025-26 Active, 2024-25 Archived)
+ *   5. Full 34 Activity Categories & Tiered Subcategories (4 PBAS Sections)
+ *   6. Granular UGC/AICTE Credit Evaluation Rules (CreditRule collection)
  *
  * Usage:
- *   node seedDatabase.js          (Seeds/updates database safely)
- *   node seedDatabase.js --reset  (Drops old collections and cleanly reseeds)
- *   npm run seed                  (Shortcut configured in package.json)
- * =============================================================================
+ *   node backend/seedDatabase.js
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const path = require("path");
-require("dotenv").config({ path: path.resolve(__dirname, ".env") });
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 // Models
 const User = require("./models/User");
 const HOD = require("./models/HOD");
-const Faculty = require("./models/Faculty");
 const Department = require("./models/Department");
+const AcademicYear = require("./models/AcademicYear");
 const Category = require("./models/Category");
 const CreditRule = require("./models/CreditRule");
-const AcademicYear = require("./models/AcademicYear");
-
-const isReset = process.argv.includes("--reset");
 
 // ── 1. DEFAULT ADMINISTRATOR & HOD ACCOUNTS ──
-const SEED_USERS = {
-  admin: {
-    regId: "admin",
-    email: "mokshyagnay@gmail.com",
-    password: "admin", // Will be hashed with bcrypt (rounds: 10)
-    role: "ADMIN",
-    isApproved: true,
-    twoFactorEnabled: false,
-    isFirstLogin: false,
-    profileImage: ""
-  },
-  hod: {
-    employeeId: "23H71A0575!",
-    name: "moksha",
-    email: "d.mokshyagnayadav@gmail.com",
-    password: "admin", // Will be hashed with bcrypt
-    department: "CSE",
-    designation: "Professor & HOD",
-    googleScholar: "",
-    vidwanId: "",
-    scopusId: "",
-    role: "HOD",
-    isApproved: true,
-    status: "APPROVED",
-    twoFactorEnabled: false,
-    isFirstLogin: false,
-    profileImage: "departments/CSE/hod/moksha(23H71A0575_)/profile_pic/profile_image.jpg"
-  }
+const SEED_ADMIN = {
+  name: "Administrator",
+  email: "mokshyagnay@gmail.com",
+  adminId: "admin",
+  regId: "admin",
+  department: "ADMINISTRATION",
+  designation: "Institutional Administrator",
+  role: "ADMIN",
+  isApproved: true,
+  status: "APPROVED"
+};
+
+const SEED_HOD = {
+  name: "moksha",
+  email: "d.mokshyagnayadav@gmail.com",
+  hodId: "23H71A0575!",
+  regId: "23H71A0575!",
+  department: "CSE",
+  designation: "Professor & HOD",
+  role: "HOD",
+  isApproved: true,
+  status: "APPROVED"
 };
 
 // ── 2. DEPARTMENTS ──
 const SEED_DEPARTMENTS = [
-  {
-    name: "CSE",
-    code: "CSE",
-    hod: "moksha",
-    description: "Computer Science & Engineering",
-    totalCredits: 0
-  }
+  { name: "CSE", code: "CSE", hodName: "moksha" },
+  { name: "ECE", code: "ECE" },
+  { name: "MECH", code: "MECH" },
+  { name: "CIVIL", code: "CIVIL" },
+  { name: "IT", code: "IT" },
+  { name: "EEE", code: "EEE" },
+  { name: "CHEMICAL", code: "CHEM" }
 ];
 
 // ── 3. ACADEMIC YEARS & ARCHIVAL CYCLES ──
@@ -88,47 +77,160 @@ const SEED_ACADEMIC_YEARS = [
     label: "AY 2025-26",
     isCurrent: true,
     isArchived: false,
-    description: "Current Active College Academic Year (Open for Submissions)"
+    description: "Current Active College Cycle • Open for Submissions"
   },
   {
     year: "2024-25",
     label: "AY 2024-25",
     isCurrent: false,
     isArchived: true,
-    description: "Archived Academic Cycle (Historical Records)"
+    description: "Archived Historical Records • View-Only for All Users"
   }
 ];
 
-// ── 4. ALL 23 CATEGORIES & TIERED SUBCATEGORIES ACROSS 4 PBAS SECTIONS ──
+// ── 4. ALL 34 CATEGORIES & TIERED SUBCATEGORIES ACROSS 4 PBAS SECTIONS ──
 const SEED_CATEGORIES = [
-  // ── SECTION I: TEACHING & LEARNING ──
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECTION I: TEACHING, LEARNING & EVALUATION (9 Categories)
+  // ═══════════════════════════════════════════════════════════════════════════
   {
     name: "InnovativeTeaching",
     section: "teaching",
     key: "innovativeTeaching",
     creditPoints: 15,
-    description: "ICT tools, pedagogical innovations, modern e-learning development",
+    description: "ICT tools, pedagogical innovations, modern e-learning development, virtual labs",
     isActive: true,
     subcategories: [
       { name: "Developed Full Online E-Content Course", key: "ict_course", creditPoints: 20, description: "Full digital courseware or module" },
       { name: "Simulations / Virtual Labs / LMS Tools", key: "ict_simulations", creditPoints: 15, description: "Interactive simulations or automated grading tools" },
-      { name: "Multimedia Lectures / Interactive Visuals", key: "ict_multimedia", creditPoints: 10, description: "Recorded lectures and rich presentations" }
+      { name: "Multimedia Lectures / Interactive Visuals", key: "ict_multimedia", creditPoints: 10, description: "Recorded lectures and rich presentations" },
+      { name: "Role Play / Project-Based Learning / Gamified Quizzes", key: "ict_roleplay", creditPoints: 15, description: "Active learning pedagogy and project-based assignments" }
+    ]
+  },
+  {
+    name: "WeeklyTeachingLoad",
+    section: "teaching",
+    key: "weeklyTeachingLoad",
+    creditPoints: 20,
+    description: "Direct classroom teaching hours, theory periods, practical lab sessions, tutorials",
+    isActive: true,
+    subcategories: [
+      { name: "Theory Teaching Load (16+ Periods/Week)", key: "teach_theory_full", creditPoints: 25, description: "Full standard theory course teaching load" },
+      { name: "Theory Teaching Load (12-15 Periods/Week)", key: "teach_theory_mid", creditPoints: 20, description: "Moderate theory course teaching load" },
+      { name: "Laboratory / Practical Sessions (6+ Lab Hours/Week)", key: "teach_lab_full", creditPoints: 15, description: "Hands-on lab conduction and viva evaluation" },
+      { name: "Tutorial & Problem-Solving Classes", key: "teach_tutorial", creditPoints: 10, description: "Small-group remedial tutorials" }
+    ]
+  },
+  {
+    name: "LecturesHandled",
+    section: "teaching",
+    key: "lecturesTaken",
+    creditPoints: 15,
+    description: "Syllabus completion efficiency, planned vs actual lecture delivery ratio",
+    isActive: true,
+    subcategories: [
+      { name: "100% Syllabus Coverage & Lecture Engagement", key: "lectures_100pct", creditPoints: 20, description: "Complete delivery matching course handout" },
+      { name: "90-99% Lecture Target Delivery", key: "lectures_90pct", creditPoints: 15, description: "High compliance lecture delivery" },
+      { name: "Additional Special Modules / Beyond-Syllabus Lectures", key: "lectures_extra", creditPoints: 10, description: "Industry-aligned special topics" }
+    ]
+  },
+  {
+    name: "CourseFile",
+    section: "teaching",
+    key: "courseFile",
+    creditPoints: 15,
+    description: "Course file compliance, lesson plans, question banks, mapping to CO-PO outcomes",
+    isActive: true,
+    subcategories: [
+      { name: "Exemplary Course File (100% Compliance + Outcome Mapping)", key: "coursefile_full", creditPoints: 20, description: "Full compliance with NBA/NAAC audit criteria" },
+      { name: "Standard Course File (Course Handout + Question Bank)", key: "coursefile_std", creditPoints: 15, description: "Standard verified course dossier" },
+      { name: "Lab Manual & Continuous Evaluation Rubrics", key: "coursefile_lab", creditPoints: 10, description: "Comprehensive lab manual with experiment rubrics" }
+    ]
+  },
+  {
+    name: "ExamDuties",
+    section: "teaching",
+    key: "examDuties",
+    creditPoints: 15,
+    description: "Internal & university examination duties, invigilation, paper setting, valuation",
+    isActive: true,
+    subcategories: [
+      { name: "University / End-Semester Paper Setter & Chief Examiner", key: "exam_paper_setter", creditPoints: 20, description: "Official question paper setter or chief examiner" },
+      { name: "Central Valuation & Answer Script Moderation", key: "exam_valuation", creditPoints: 15, description: "Evaluated 100+ answer scripts" },
+      { name: "Internal Observer / Squad / Chief Superintendent", key: "exam_observer", creditPoints: 15, description: "Exam hall supervision leadership" },
+      { name: "Invigilation Duties (Full Allotment Completed)", key: "exam_invigilation", creditPoints: 10, description: "Regular exam invigilation duties" }
+    ]
+  },
+  {
+    name: "RemedialActivities",
+    section: "teaching",
+    key: "remedialActivities",
+    creditPoints: 15,
+    description: "Remedial classes for slow learners, bridge courses, GATE coaching, design of experiments",
+    isActive: true,
+    subcategories: [
+      { name: "Remedial Classes for Academically Slow Learners (10+ hrs)", key: "remedial_slow_learners", creditPoints: 15, description: "Dedicated remedial coaching sessions" },
+      { name: "Bridge Course for First-Year / Lateral Entry Students", key: "remedial_bridge", creditPoints: 15, description: "Transition bridge course conduction" },
+      { name: "GATE / Competitive Exam Coaching Sessions", key: "remedial_gate", creditPoints: 20, description: "Specialized competitive training modules" },
+      { name: "Student Project Design & Prototype Mentorship", key: "remedial_projects", creditPoints: 15, description: "Guiding hardware/software mini projects" }
+    ]
+  },
+  {
+    name: "StudentMentoring",
+    section: "teaching",
+    key: "counseling",
+    creditPoints: 15,
+    description: "Proctoring, academic counseling, psychological mentoring, placement advisory",
+    isActive: true,
+    subcategories: [
+      { name: "Proctor / Faculty Advisor (20+ Assigned Wards)", key: "mentor_proctor", creditPoints: 20, description: "Comprehensive student progress tracking" },
+      { name: "Special Academic & Career Counseling Sessions", key: "mentor_counseling", creditPoints: 15, description: "Documented student counseling logs" },
+      { name: "Parent-Teacher Interactive Meeting Lead", key: "mentor_parents", creditPoints: 10, description: "Facilitated ward performance updates to parents" }
+    ]
+  },
+  {
+    name: "PassPercentage",
+    section: "teaching",
+    key: "passPercentage",
+    creditPoints: 25,
+    description: "End-semester academic result pass percentage for assigned theory and lab courses",
+    isActive: true,
+    subcategories: [
+      { name: "Theory Course Pass Percentage ≥ 95%", key: "pass_95pct", creditPoints: 30, description: "Outstanding academic results" },
+      { name: "Theory Course Pass Percentage 85% - 94%", key: "pass_85pct", creditPoints: 25, description: "High academic pass percentage" },
+      { name: "Theory Course Pass Percentage 70% - 84%", key: "pass_70pct", creditPoints: 15, description: "Satisfactory pass percentage" },
+      { name: "Laboratory Course Pass Percentage 100%", key: "pass_lab_100", creditPoints: 20, description: "100% pass in practical exams" }
+    ]
+  },
+  {
+    name: "StudentFeedback",
+    section: "teaching",
+    key: "studentFeedback",
+    creditPoints: 20,
+    description: "Institutional end-semester student appraisal and teaching feedback rating",
+    isActive: true,
+    subcategories: [
+      { name: "Student Feedback Score ≥ 90%", key: "feedback_90pct", creditPoints: 25, description: "Exemplary student feedback evaluation" },
+      { name: "Student Feedback Score 80% - 89%", key: "feedback_80pct", creditPoints: 20, description: "High student feedback rating" },
+      { name: "Student Feedback Score 70% - 79%", key: "feedback_70pct", creditPoints: 15, description: "Good student feedback rating" }
     ]
   },
 
-  // ── SECTION II: PROFESSIONAL DEVELOPMENT ──
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECTION II: PROFESSIONAL DEVELOPMENT & CO-CURRICULAR (10 Categories)
+  // ═══════════════════════════════════════════════════════════════════════════
   {
     name: "Conference",
     section: "professional",
     key: "conferences",
     creditPoints: 15,
-    description: "International and National conference presentations and chairing",
+    description: "International and National conference presentations, session chairing, track hosting",
     isActive: true,
     subcategories: [
       { name: "International Conference Presentation (Full Paper)", key: "conf_intl_present", creditPoints: 20, description: "International forum paper presentation" },
       { name: "National Conference Presentation", key: "conf_natl_present", creditPoints: 15, description: "National level conference presentation" },
       { name: "Session Chair / Keynote / Track Chair", key: "conf_chair", creditPoints: 25, description: "Session chairing or keynote speaker invitation" },
-      { name: "Conference Organizing Secretary / Lead Organizer", key: "conf_organizer", creditPoints: 20, description: "Lead role in organizing national/international conference" }
+      { name: "Conference Organizing Secretary / Lead Organizer", key: "conf_organizer", creditPoints: 20, description: "Lead role in organizing conference" }
     ]
   },
   {
@@ -139,10 +241,10 @@ const SEED_CATEGORIES = [
     description: "Technical skill enhancement workshops (Attended / Organized)",
     isActive: true,
     subcategories: [
-      { name: "5+ Days Advanced Technical Workshop (Hands-on)", key: "workshop_5days", creditPoints: 15, description: "Extended technical workshop (attended / organized)" },
+      { name: "5+ Days Advanced Technical Workshop (Hands-on)", key: "workshop_5days", creditPoints: 15, description: "Extended technical workshop" },
       { name: "2-4 Days Technical Skill Workshop", key: "workshop_2to4days", creditPoints: 10, description: "Multi-day technical workshop" },
       { name: "1-Day Specialized Workshop", key: "workshop_1day", creditPoints: 5, description: "One-day workshop participation" },
-      { name: "Workshop Lead Organizer / Coordinator", key: "workshop_organizer", creditPoints: 20, description: "Convenor / Coordinator of technical workshop" }
+      { name: "Workshop Lead Organizer / Coordinator", key: "workshop_organizer", creditPoints: 20, description: "Convenor / Coordinator of workshop" }
     ]
   },
   {
@@ -150,12 +252,12 @@ const SEED_CATEGORIES = [
     section: "professional",
     key: "books",
     creditPoints: 25,
-    description: "Authored books, edited volumes, and chapter contributions",
+    description: "Authored books, edited volumes, and chapter contributions with ISBN",
     isActive: true,
     subcategories: [
-      { name: "Authored Book (International Publisher - IEEE / Springer / Wiley)", key: "book_authored_intl", creditPoints: 30, description: "Complete authored book published with international reputed publisher" },
-      { name: "Authored Book (National Publisher with ISBN)", key: "book_authored_natl", creditPoints: 20, description: "Authored book published with national publisher" },
-      { name: "Edited Volume / Book as Chief Editor", key: "edited_volume", creditPoints: 25, description: "Edited volume or conference proceedings book" },
+      { name: "Authored Book (International Publisher - IEEE / Springer / Wiley)", key: "book_authored_intl", creditPoints: 30, description: "Complete authored book published internationally" },
+      { name: "Authored Book (National Publisher with ISBN)", key: "book_authored_natl", creditPoints: 20, description: "Authored book published nationally" },
+      { name: "Edited Volume / Book as Chief Editor", key: "edited_volume", creditPoints: 25, description: "Edited volume or conference proceedings" },
       { name: "Book Chapter (Scopus / IEEE / Springer Indexed)", key: "book_chapter_scopus", creditPoints: 15, description: "Contributed chapter in indexed book volume" },
       { name: "Book Chapter (National Publisher / ISBN)", key: "book_chapter_natl", creditPoints: 10, description: "Contributed chapter in ISBN book" }
     ]
@@ -165,7 +267,7 @@ const SEED_CATEGORIES = [
     section: "professional",
     key: "nptel",
     creditPoints: 15,
-    description: "NPTEL, SWAYAM, and MOOC certifications (Elite, Gold, Silver)",
+    description: "NPTEL, SWAYAM, and MOOC certifications (Elite Gold, Silver, Elite)",
     isActive: true,
     subcategories: [
       { name: "NPTEL / SWAYAM Elite + Gold (Top 1-2%)", key: "nptel_gold", creditPoints: 25, description: "Score ≥ 90% in NPTEL / SWAYAM certification" },
@@ -179,7 +281,7 @@ const SEED_CATEGORIES = [
     section: "professional",
     key: "honorsAwards",
     creditPoints: 20,
-    description: "National, State, and Institutional awards and recognitions",
+    description: "National, State, and Institutional awards and research fellowships",
     isActive: true,
     subcategories: [
       { name: "International / Global Prestigious Award", key: "award_intl", creditPoints: 30, description: "Recognized international academic award" },
@@ -192,10 +294,10 @@ const SEED_CATEGORIES = [
     section: "professional",
     key: "guestLectures",
     creditPoints: 10,
-    description: "Keynote addresses, expert talks, and resource person deliveries",
+    description: "Keynote addresses, invited expert talks, and resource person deliveries",
     isActive: true,
     subcategories: [
-      { name: "International Keynote / Expert Session", key: "lecture_intl", creditPoints: 20, description: "Keynote speech at international conference/university" },
+      { name: "International Keynote / Expert Session", key: "lecture_intl", creditPoints: 20, description: "Keynote speech at international conference" },
       { name: "National Level Invited Expert Talk (3+ hrs)", key: "lecture_natl", creditPoints: 15, description: "Resource person at national workshop/FDP" },
       { name: "Expert Talk / Webinar Resource Person (1-2 hrs)", key: "lecture_standard", creditPoints: 10, description: "Technical guest lecture delivery" }
     ]
@@ -230,7 +332,7 @@ const SEED_CATEGORIES = [
     section: "professional",
     key: "certifications",
     creditPoints: 15,
-    description: "Global industry professional certifications (AWS, Cisco, etc.)",
+    description: "Global industry professional certifications (AWS, Cisco, RedHat, GCP)",
     isActive: true,
     subcategories: [
       { name: "Professional / Expert Level Certification (AWS Pro, CCIE, GCP Lead)", key: "cert_expert", creditPoints: 25, description: "Advanced industry credential" },
@@ -243,7 +345,7 @@ const SEED_CATEGORIES = [
     section: "professional",
     key: "others",
     creditPoints: 5,
-    description: "Other recognized academic and research contributions",
+    description: "Other recognized academic, research, and extension contributions",
     isActive: true,
     subcategories: [
       { name: "Institutional Committee Leadership / Head", key: "other_lead", creditPoints: 15, description: "Chairperson / Convener of major institute committees" },
@@ -251,20 +353,22 @@ const SEED_CATEGORIES = [
     ]
   },
 
-  // ── SECTION III: RESEARCH & DEVELOPMENT (R&D) ──
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECTION III: RESEARCH & DEVELOPMENT (R&D) (10 Categories)
+  // ═══════════════════════════════════════════════════════════════════════════
   {
     name: "Publication",
     section: "rnd",
     key: "paperPublications",
     creditPoints: 30,
-    description: "Journal and Conference research publications (Scopus, SCI, UGC)",
+    description: "Journal and Conference research publications (Scopus Q1-Q4, SCI, UGC-CARE)",
     isActive: true,
     subcategories: [
       { name: "Journal Article (SCI / Scopus Q1)", key: "journal_q1", creditPoints: 40, description: "Top quartile SCI / Scopus indexed peer-reviewed journal" },
       { name: "Journal Article (Scopus Q2)", key: "journal_q2", creditPoints: 35, description: "Second quartile Scopus indexed journal" },
       { name: "Journal Article (Scopus Q3)", key: "journal_q3", creditPoints: 30, description: "Third quartile Scopus indexed journal" },
       { name: "Journal Article (Scopus Q4)", key: "journal_q4", creditPoints: 25, description: "Fourth quartile Scopus indexed journal" },
-      { name: "Journal Article (UGC-CARE / Peer-Reviewed)", key: "journal_ugc", creditPoints: 20, description: "UGC-CARE approved or recognized peer-reviewed journal" }
+      { name: "Journal Article (UGC-CARE / Peer-Reviewed)", key: "journal_ugc", creditPoints: 20, description: "UGC-CARE approved or recognized journal" }
     ]
   },
   {
@@ -299,7 +403,7 @@ const SEED_CATEGORIES = [
     section: "rnd",
     key: "researchProjects",
     creditPoints: 35,
-    description: "External sponsored major and minor research grants",
+    description: "External sponsored major and minor research grants (DST, SERB, AICTE, ISRO)",
     isActive: true,
     subcategories: [
       { name: "Major Extramural Sponsored Project (> ₹10 Lakhs)", key: "project_major", creditPoints: 40, description: "DST, SERB, AICTE, ISRO sponsored major grant" },
@@ -312,7 +416,7 @@ const SEED_CATEGORIES = [
     section: "rnd",
     key: "consultancy",
     creditPoints: 25,
-    description: "Corporate and industrial consultancy assignments",
+    description: "Corporate and industrial consultancy assignments and commercial testing",
     isActive: true,
     subcategories: [
       { name: "High Value Industrial Consultancy (> ₹5 Lakhs)", key: "consultancy_high", creditPoints: 35, description: "Major industrial consultancy executed" },
@@ -338,7 +442,7 @@ const SEED_CATEGORIES = [
     section: "rnd",
     key: "researchPolicy",
     creditPoints: 15,
-    description: "Institutional research policy framing and contributions",
+    description: "Institutional research policy framing, guidelines, and whitepapers",
     isActive: true,
     subcategories: [
       { name: "National / State Policy Advisory Committee", key: "policy_national", creditPoints: 25, description: "Government research policy body" },
@@ -350,7 +454,7 @@ const SEED_CATEGORIES = [
     section: "rnd",
     key: "professionalMemberships",
     creditPoints: 10,
-    description: "Senior and life memberships in IEEE, ACM, CSI, IETE",
+    description: "Senior and life memberships in IEEE, ACM, CSI, IETE, ISTE",
     isActive: true,
     subcategories: [
       { name: "Fellow / Senior Member (IEEE, ACM, IETE)", key: "member_senior", creditPoints: 20, description: "Elevated senior membership status" },
@@ -362,7 +466,7 @@ const SEED_CATEGORIES = [
     section: "rnd",
     key: "incubation",
     creditPoints: 20,
-    description: "Startup incubation, mentorship, and commercialization",
+    description: "Startup incubation, mentorship, prototype development, commercialization",
     isActive: true,
     subcategories: [
       { name: "Startup Founder / Co-Founder (Registered Company)", key: "startup_founder", creditPoints: 35, description: "Incubated startup enterprise" },
@@ -374,7 +478,7 @@ const SEED_CATEGORIES = [
     section: "rnd",
     key: "mous",
     creditPoints: 20,
-    description: "Institutional and corporate Memorandum of Understanding",
+    description: "Institutional and corporate Memorandum of Understanding (Industry/Academic)",
     isActive: true,
     subcategories: [
       { name: "International University / Industry Active MoU", key: "mou_intl", creditPoints: 30, description: "Active collaborative research/exchange MoU" },
@@ -382,18 +486,21 @@ const SEED_CATEGORIES = [
     ]
   },
 
-  // ── SECTION IV: ADMINISTRATIVE & GOVERNANCE ──
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECTION IV: INSTITUTIONAL & DEPARTMENT GOVERNANCE / ADMINISTRATION (5 Categories)
+  // ═══════════════════════════════════════════════════════════════════════════
   {
     name: "DeptAdministration",
     section: "administrative",
     key: "deptAdministration",
     creditPoints: 15,
-    description: "Departmental coordinatorships (NBA, NAAC, Time-table, Exams)",
+    description: "Departmental coordinatorships (NBA, NAAC, Time-table, Exam Cell, Lab In-charge, BOS)",
     isActive: true,
     subcategories: [
       { name: "Department NBA / NAAC Criteria Lead Coordinator", key: "admin_nba_lead", creditPoints: 20, description: "Accreditation criteria lead" },
       { name: "Department Academic / Exam / Time-table Coordinator", key: "admin_dept_coord", creditPoints: 15, description: "Core departmental role" },
-      { name: "Laboratory In-charge / Class Teacher", key: "admin_lab_incharge", creditPoints: 10, description: "Lab or class mentorship" }
+      { name: "Laboratory In-charge / Class Teacher / Module Coordinator", key: "admin_lab_incharge", creditPoints: 10, description: "Lab or class mentorship" },
+      { name: "Board of Studies (BOS) / Curriculum Revision Member", key: "admin_bos_member", creditPoints: 15, description: "Curriculum and syllabus design member" }
     ]
   },
   {
@@ -401,205 +508,232 @@ const SEED_CATEGORIES = [
     section: "administrative",
     key: "institutionalAdmin",
     creditPoints: 20,
-    description: "College-wide institutional leadership (Dean, IQAC, Placement, NSS)",
+    description: "College-wide institutional leadership (Dean, IQAC Director, Training & Placement Head)",
     isActive: true,
     subcategories: [
-      { name: "Dean / Associate Dean / IQAC Director", key: "admin_dean_iqac", creditPoints: 30, description: "Apex institutional leadership" },
-      { name: "Head of Training & Placement / Chief Warden", key: "admin_placement_head", creditPoints: 20, description: "College-wide portfolio head" },
-      { name: "NSS / NCC / Sports / Cultural Convener", key: "admin_extension_convener", creditPoints: 15, description: "Co-curricular extension coordinator" }
+      { name: "Dean / Associate Dean / IQAC Director / Principal", key: "admin_dean_iqac", creditPoints: 30, description: "Apex institutional executive leadership" },
+      { name: "Head of Training & Placement / Chief Warden", key: "admin_placement_head", creditPoints: 25, description: "College-wide portfolio head" },
+      { name: "Controller of Examinations (COE) / Registrar Support", key: "admin_coe_head", creditPoints: 20, description: "Institutional exam governance" }
+    ]
+  },
+  {
+    name: "StudentActivities",
+    section: "administrative",
+    key: "studentActivities",
+    creditPoints: 15,
+    description: "Co-curricular student governance, technical clubs, NSS, NCC, sports, cultural events",
+    isActive: true,
+    subcategories: [
+      { name: "Faculty Advisor / Head for Technical Clubs & Chapters (CSI, ACM, IEEE)", key: "student_club_advisor", creditPoints: 20, description: "Mentoring student technical body" },
+      { name: "NSS / NCC / Sports Officer / Extension Services Convener", key: "student_nss_sports", creditPoints: 15, description: "Community & sports leadership" },
+      { name: "Annual Fest / Hackathon / National Symposium Coordinator", key: "student_fest_lead", creditPoints: 15, description: "Lead organizer for college-wide student flagship events" }
+    ]
+  },
+  {
+    name: "AccreditationSupport",
+    section: "administrative",
+    key: "accreditationSupport",
+    creditPoints: 20,
+    description: "Institutional accreditation dossiers, NAAC, NBA, NIRF, QS rankings, ISO audits",
+    isActive: true,
+    subcategories: [
+      { name: "Institutional NAAC / NBA Chief Steering Committee Member", key: "accred_steering_lead", creditPoints: 25, description: "Apex accreditation preparation team" },
+      { name: "NIRF / QS Ranking Institutional Data Lead", key: "accred_nirf_data", creditPoints: 20, description: "National ranking submission coordinator" },
+      { name: "Internal Quality Audit / ISO Lead Auditor", key: "accred_iso_auditor", creditPoints: 15, description: "Academic and administrative quality auditor" }
+    ]
+  },
+  {
+    name: "InstitutionalCommittees",
+    section: "administrative",
+    key: "institutionalCommittees",
+    creditPoints: 10,
+    description: "Statutory & institutional standing committees (Anti-Ragging, Grievance, Discipline, Library)",
+    isActive: true,
+    subcategories: [
+      { name: "Anti-Ragging Squad / Women Protection Cell Convener", key: "comm_statutory_lead", creditPoints: 15, description: "Statutory mandatory committee head" },
+      { name: "Student Grievance & Disciplinary Committee Member", key: "comm_grievance_member", creditPoints: 10, description: "Disciplinary and conflict resolution" },
+      { name: "Central Library / Purchasing / Hostel Committee Member", key: "comm_library_purchase", creditPoints: 10, description: "Central resource committee member" }
     ]
   }
 ];
 
-// ── 5. ALL 38 GRANULAR CREDIT RULES ──
+// ── 5. ALL 55+ GRANULAR CREDIT EVALUATION RULES ──
 const SEED_CREDIT_RULES = [
+  // SECTION I: TEACHING
+  { category: "WeeklyTeachingLoad", section: "teaching", ruleKey: "teach_theory_full", displayName: "Theory Teaching Load (16+ Periods/Week)", creditPoints: 25, description: "Standard theory lecture load" },
+  { category: "WeeklyTeachingLoad", section: "teaching", ruleKey: "teach_lab_full", displayName: "Laboratory Practical Load (6+ Hours/Week)", creditPoints: 15, description: "Hands-on lab conduction" },
+  { category: "LecturesHandled", section: "teaching", ruleKey: "lectures_100pct", displayName: "100% Syllabus Target Delivery", creditPoints: 20, description: "Full delivery of planned classes" },
+  { category: "CourseFile", section: "teaching", ruleKey: "coursefile_full", displayName: "Exemplary Course File (NBA/NAAC Mapped)", creditPoints: 20, description: "Complete verified syllabus dossier" },
+  { category: "ExamDuties", section: "teaching", ruleKey: "exam_paper_setter", displayName: "University Paper Setter / Chief Examiner", creditPoints: 20, description: "Question paper setting duty" },
+  { category: "ExamDuties", section: "teaching", ruleKey: "exam_valuation", displayName: "Central Evaluation / Answer Script Valuation", creditPoints: 15, description: "Evaluated 100+ answer scripts" },
+  { category: "InnovativeTeaching", section: "teaching", ruleKey: "ict_course", displayName: "Developed Full Online E-Content Course", creditPoints: 20, description: "Digital courseware" },
+  { category: "RemedialActivities", section: "teaching", ruleKey: "remedial_slow_learners", displayName: "Remedial Classes for Slow Learners", creditPoints: 15, description: "Remedial coaching sessions" },
+  { category: "StudentMentoring", section: "teaching", ruleKey: "mentor_proctor", displayName: "Proctor / Faculty Ward Mentorship", creditPoints: 20, description: "20+ assigned student wards" },
+  { category: "PassPercentage", section: "teaching", ruleKey: "pass_95pct", displayName: "Theory Course Pass Percentage ≥ 95%", creditPoints: 30, description: "Outstanding academic results" },
+  { category: "StudentFeedback", section: "teaching", ruleKey: "feedback_90pct", displayName: "Student Feedback Score ≥ 90%", creditPoints: 25, description: "Top student feedback rating" },
+
+  // SECTION II: PROFESSIONAL
+  { category: "Conference", section: "professional", ruleKey: "conf_intl_present", displayName: "International Conference Presentation", creditPoints: 20, description: "Author / Presenter at international forum" },
+  { category: "Conference", section: "professional", ruleKey: "conf_natl_present", displayName: "National Conference Presentation", creditPoints: 15, description: "Author / Presenter at national conference" },
+  { category: "Conference", section: "professional", ruleKey: "conf_chair_session", displayName: "Conference Session Chair / Keynote", creditPoints: 25, description: "Invited session chair / track chair" },
+  { category: "Conference", section: "professional", ruleKey: "conf_organizer", displayName: "Conference Lead Organizer / Secretary", creditPoints: 20, description: "Organizing committee leadership" },
+  { category: "Book", section: "professional", ruleKey: "book_authored_intl", displayName: "Authored Book (International Publisher)", creditPoints: 30, description: "Springer, Elsevier, Wiley, IEEE, etc." },
+  { category: "Book", section: "professional", ruleKey: "book_authored_natl", displayName: "Authored Book (National Publisher)", creditPoints: 20, description: "National level ISBN publication" },
+  { category: "Book", section: "professional", ruleKey: "edited_volume", displayName: "Edited Volume / Conference Proceedings", creditPoints: 25, description: "Chief / volume editor" },
+  { category: "Book", section: "professional", ruleKey: "book_chapter_scopus", displayName: "Book Chapter (Scopus / IEEE Indexed)", creditPoints: 15, description: "Indexed book chapter contribution" },
+  { category: "Book", section: "professional", ruleKey: "book_chapter", displayName: "Book Chapter (National ISBN)", creditPoints: 10, description: "Standard book chapter contribution" },
+  { category: "NPTEL", section: "professional", ruleKey: "nptel_gold", displayName: "NPTEL / SWAYAM Elite + Gold", creditPoints: 25, description: "Score ≥ 90%" },
+  { category: "NPTEL", section: "professional", ruleKey: "nptel_silver", displayName: "NPTEL / SWAYAM Elite + Silver", creditPoints: 20, description: "Score 75-89%" },
+  { category: "NPTEL", section: "professional", ruleKey: "nptel_elite", displayName: "NPTEL / SWAYAM Elite", creditPoints: 15, description: "Score 60-74%" },
+  { category: "Workshop", section: "professional", ruleKey: "workshop_5days", displayName: "Workshop (5+ Days / Hands-on)", creditPoints: 15, description: "Comprehensive technical training" },
+  { category: "Workshop", section: "professional", ruleKey: "workshop_1to3days", displayName: "Workshop (1 - 3 Days)", creditPoints: 10, description: "Skill development workshop" },
+  { category: "HonorsAwards", section: "professional", ruleKey: "award_intl", displayName: "International / Global Award", creditPoints: 30, description: "Global academic distinction" },
+  { category: "HonorsAwards", section: "professional", ruleKey: "award_natl", displayName: "National / State Award", creditPoints: 20, description: "Government or society award" },
+  { category: "GuestLecture", section: "professional", ruleKey: "lecture_intl", displayName: "International Keynote / Expert Talk", creditPoints: 20, description: "Keynote at international university" },
+  { category: "GuestLecture", section: "professional", ruleKey: "lecture_natl", displayName: "National Invited Expert Session", creditPoints: 15, description: "Resource person at national FDP" },
+  { category: "Certification", section: "professional", ruleKey: "cert_expert", displayName: "Professional Global Certification (AWS/Cisco/GCP)", creditPoints: 25, description: "Expert level credential" },
+
+  // SECTION III: RESEARCH & R&D
   { category: "Publication", section: "rnd", ruleKey: "journal_scopus_q1", displayName: "Journal - Scopus (Q1)", creditPoints: 40, description: "Highest quartile peer-reviewed Scopus journal" },
   { category: "Publication", section: "rnd", ruleKey: "journal_scopus_q2", displayName: "Journal - Scopus (Q2)", creditPoints: 35, description: "Q2 indexed Scopus journal publication" },
   { category: "Publication", section: "rnd", ruleKey: "journal_scopus_q3", displayName: "Journal - Scopus (Q3)", creditPoints: 30, description: "Q3 indexed Scopus journal publication" },
   { category: "Publication", section: "rnd", ruleKey: "journal_scopus_q4", displayName: "Journal - Scopus (Q4)", creditPoints: 25, description: "Q4 indexed Scopus journal publication" },
   { category: "Publication", section: "rnd", ruleKey: "journal_ugc_care", displayName: "Journal - UGC-CARE Listed", creditPoints: 20, description: "UGC recognized journal publication" },
   { category: "Publication", section: "rnd", ruleKey: "journal_sci_top", displayName: "SCI / SCIE Indexed Top Tier", creditPoints: 40, description: "Science Citation Index Expanded" },
-  { category: "Publication", section: "rnd", ruleKey: "journal_peer_reviewed", displayName: "Peer Reviewed / Non-indexed", creditPoints: 15, description: "Standard academic journal publication" },
-
-  { category: "Conference", section: "professional", ruleKey: "conf_intl_present", displayName: "International Conference Presentation", creditPoints: 20, description: "Author / Presenter at international forum" },
-  { category: "Conference", section: "professional", ruleKey: "conf_natl_present", displayName: "National Conference Presentation", creditPoints: 15, description: "Author / Presenter at national conference" },
-  { category: "Conference", section: "professional", ruleKey: "conf_chair_session", displayName: "Conference Session Chair / Keynote", creditPoints: 25, description: "Invited session chair / track chair" },
-  { category: "Conference", section: "professional", ruleKey: "conf_organizer", displayName: "Conference Lead Organizer / Secretary", creditPoints: 20, description: "Organizing committee leadership" },
-
-  { category: "Book", section: "professional", ruleKey: "book_authored_intl", displayName: "Authored Book (International Publisher)", creditPoints: 30, description: "Springer, Elsevier, Wiley, IEEE, etc." },
-  { category: "Book", section: "professional", ruleKey: "book_authored_natl", displayName: "Authored Book (National / Reputed Publisher)", creditPoints: 20, description: "National level ISBN publication" },
-  { category: "Book", section: "professional", ruleKey: "edited_volume", displayName: "Edited Volume / Conference Proceedings", creditPoints: 25, description: "Chief / volume editor" },
-  { category: "Book", section: "professional", ruleKey: "book_chapter_scopus", displayName: "Book Chapter (Scopus / IEEE Indexed)", creditPoints: 15, description: "Indexed book chapter contribution" },
-  { category: "Book", section: "professional", ruleKey: "book_chapter", displayName: "Book Chapter (National ISBN)", creditPoints: 10, description: "Standard book chapter contribution" },
-
   { category: "IPR", section: "rnd", ruleKey: "patent_intl_granted", displayName: "Patent Granted (International)", creditPoints: 40, description: "USPTO, EPO, WIPO granted patent" },
   { category: "IPR", section: "rnd", ruleKey: "patent_natl_granted", displayName: "Patent Granted (National)", creditPoints: 30, description: "Indian Patent Office granted patent" },
   { category: "IPR", section: "rnd", ruleKey: "patent_published", displayName: "Patent Published in Gazette", creditPoints: 20, description: "Official patent publication" },
   { category: "IPR", section: "rnd", ruleKey: "copyright_registered", displayName: "Copyright / Design Registered", creditPoints: 15, description: "Registered IP copyright or design" },
-
   { category: "ResearchProject", section: "rnd", ruleKey: "research_project_major_pi", displayName: "Major Research Project - PI (> ₹10 Lakhs)", creditPoints: 40, description: "DST, SERB, AICTE, DRDO sponsored" },
   { category: "ResearchProject", section: "rnd", ruleKey: "research_project_minor_pi", displayName: "Minor Research Project - PI (≤ ₹10 Lakhs)", creditPoints: 25, description: "Sponsored minor research grant" },
-  { category: "ResearchProject", section: "rnd", ruleKey: "research_project_copi", displayName: "Co-Principal Investigator (Co-PI)", creditPoints: 15, description: "Joint sponsored research grant" },
-
   { category: "Consultancy", section: "rnd", ruleKey: "consultancy_industrial", displayName: "Industrial Consultancy Project", creditPoints: 25, description: "Revenue generating corporate consultancy" },
-
-  { category: "Workshop", section: "professional", ruleKey: "workshop_5days", displayName: "Workshop (5+ Days / Hands-on)", creditPoints: 15, description: "Comprehensive technical training" },
-  { category: "Workshop", section: "professional", ruleKey: "workshop_1to3days", displayName: "Workshop (1 - 3 Days)", creditPoints: 10, description: "Skill development workshop" },
-
   { category: "FDP", section: "rnd", ruleKey: "fdp_2weeks", displayName: "Faculty Development Programme (2 Weeks)", creditPoints: 20, description: "AICTE / ATAL approved 2-week FDP" },
   { category: "FDP", section: "rnd", ruleKey: "fdp_1week", displayName: "Faculty Development Programme (1 Week)", creditPoints: 15, description: "5-day specialized FDP" },
+  { category: "DoctoralThesis", section: "rnd", ruleKey: "phd_awarded_main", displayName: "PhD Degree Awarded (Principal Supervisor)", creditPoints: 35, description: "Guided doctoral research" },
+  { category: "ProfessionalMembership", section: "rnd", ruleKey: "member_senior", displayName: "Senior Member / Fellow (IEEE / ACM)", creditPoints: 20, description: "Senior professional membership" },
+  { category: "Incubation", section: "rnd", ruleKey: "startup_founder", displayName: "Startup Founder / Co-Founder", creditPoints: 35, description: "Commercialized incubated startup" },
+  { category: "MoU", section: "rnd", ruleKey: "mou_intl", displayName: "Active International MoU", creditPoints: 30, description: "Institutional collaboration agreement" },
 
-  { category: "NPTEL", section: "professional", ruleKey: "nptel_gold_elite", displayName: "NPTEL / SWAYAM - Elite + Gold (≥90%)", creditPoints: 25, description: "Top 1-2% topper certification" },
-  { category: "NPTEL", section: "professional", ruleKey: "nptel_silver", displayName: "NPTEL / SWAYAM - Elite + Silver (75-89%)", creditPoints: 20, description: "8-12 week advanced certification" },
-  { category: "NPTEL", section: "professional", ruleKey: "nptel_elite", displayName: "NPTEL / SWAYAM - Elite (60-74%)", creditPoints: 15, description: "Elite MOOC certification" },
-  { category: "NPTEL", section: "professional", ruleKey: "nptel_pass", displayName: "NPTEL / SWAYAM - Successful Completion", creditPoints: 10, description: "Passed proctored MOOC examination" },
-
-  { category: "DoctoralThesis", section: "rnd", ruleKey: "phd_awarded", displayName: "Ph.D. Scholar Guided & Awarded", creditPoints: 35, description: "Doctoral degree conferred under faculty guide" },
-  { category: "DoctoralThesis", section: "rnd", ruleKey: "phd_ongoing", displayName: "Ph.D. Scholar Currently Guiding", creditPoints: 15, description: "Active registered doctoral candidate" },
-
-  { category: "HonorsAwards", section: "professional", ruleKey: "award_national", displayName: "National / State Level Academic Award", creditPoints: 20, description: "Excellence in research or teaching" },
-  { category: "MoU", section: "rnd", ruleKey: "mou_active_industry", displayName: "Active Industry MoU Initiator", creditPoints: 20, description: "Formal partnership agreement signed" },
-  { category: "GuestLecture", section: "professional", ruleKey: "guest_lecture_keynote", displayName: "Keynote Address / Invited Expert Talk", creditPoints: 15, description: "Resource person at recognized forum" },
-  { category: "Certification", section: "professional", ruleKey: "global_certification", displayName: "Global Industry Certification (AWS/Google/CISCO)", creditPoints: 20, description: "Professional proctored certification" },
-  { category: "ResearchPolicy", section: "rnd", ruleKey: "institutional_policy", displayName: "Institutional Research Policy Contribution", creditPoints: 15, description: "Committee framing academic research guidelines" },
-
-  { category: "InnovativeTeaching", section: "teaching", ruleKey: "teaching_econtent_dev", displayName: "Digital Pedagogy / E-Content Module", creditPoints: 15, description: "ICT based digital course module development" },
-  { category: "DeptAdministration", section: "administrative", ruleKey: "admin_nba_naac_lead", displayName: "NBA / NAAC Criteria Coordinator", creditPoints: 20, description: "Department level accreditation criteria lead" },
-  { category: "InstitutionalAdmin", section: "administrative", ruleKey: "admin_iqac_director", displayName: "IQAC Director / Dean / Chief Warden", creditPoints: 25, description: "Apex institutional governance portfolio" }
+  // SECTION IV: ADMINISTRATIVE
+  { category: "DeptAdministration", section: "administrative", ruleKey: "admin_nba_lead", displayName: "Department NBA / NAAC Criteria Lead", creditPoints: 20, description: "Department accreditation lead" },
+  { category: "DeptAdministration", section: "administrative", ruleKey: "admin_dept_coord", displayName: "Department Time-table / Exam Coordinator", creditPoints: 15, description: "Key departmental administrator" },
+  { category: "InstitutionalAdmin", section: "administrative", ruleKey: "admin_dean_iqac", displayName: "Dean / Associate Dean / IQAC Director", creditPoints: 30, description: "Apex institutional leadership" },
+  { category: "InstitutionalAdmin", section: "administrative", ruleKey: "admin_placement_head", displayName: "Head Training & Placement / Chief Warden", creditPoints: 25, description: "Central institutional portfolio" },
+  { category: "StudentActivities", section: "administrative", ruleKey: "student_club_advisor", displayName: "Student Technical Club Faculty Advisor", creditPoints: 20, description: "Advisor for IEEE, CSI, ACM clubs" },
+  { category: "AccreditationSupport", section: "administrative", ruleKey: "accred_steering_lead", displayName: "Institutional NAAC / NBA Steering Lead", creditPoints: 25, description: "Accreditation steering committee lead" },
+  { category: "InstitutionalCommittees", section: "administrative", ruleKey: "comm_statutory_lead", displayName: "Statutory Committee Convener (Anti-Ragging / Grievance)", creditPoints: 15, description: "Mandatory statutory body convener" }
 ];
 
-async function seedDatabase(options = {}) {
-  const mongoUri = process.env.MONGO_URI;
-  if (!mongoUri) {
-    console.error("❌ Error: MONGO_URI is missing in backend/.env");
-    if (options.disconnect !== false) process.exit(1);
-    return;
-  }
-
-  const shouldReset = options.reset !== undefined ? options.reset : isReset;
-  const shouldDisconnect = options.disconnect !== undefined ? options.disconnect : true;
-
+async function seedDatabase() {
   console.log("==========================================================");
   console.log("🚀 INTELLICA DATABASE SEEDER");
   console.log("==========================================================");
 
+  const mongoUri = process.env.MONGO_URI;
+  if (!mongoUri) {
+    console.error("❌ ERROR: MONGO_URI is missing from environment variables!");
+    process.exit(1);
+  }
+
+  console.log("📡 Connecting to MongoDB...");
+  await mongoose.connect(mongoUri);
+  console.log("✅ Connected to MongoDB successfully\n");
+
   try {
-    if (mongoose.connection.readyState === 0) {
-      console.log(`📡 Connecting to MongoDB...`);
-      await mongoose.connect(mongoUri);
-      console.log("✅ Connected to MongoDB successfully\n");
-    }
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash("admin", salt);
 
-    // ── STEP 1: DROP OLD COLLECTIONS IF --reset FLAG IS PROVIDED ──
-    if (shouldReset) {
-      console.log("🧹 Reset Mode: Clearing existing users, categories, rules, academic years, and departments...");
-      await Promise.all([
-        User.deleteMany({}),
-        HOD.deleteMany({}),
-        Department.deleteMany({}),
-        Category.deleteMany({}),
-        CreditRule.deleteMany({}),
-        AcademicYear.deleteMany({})
-      ]);
-      console.log("✅ Collections cleared\n");
-    }
-
-    // ── STEP 2: SEED ADMIN USER ──
+    // ── 1. Seed Admin User ──
     console.log("👤 Seeding Administrator User...");
-    const adminData = SEED_USERS.admin;
-    const adminHashedPassword = await bcrypt.hash(adminData.password, 10);
+    let adminUser = await User.findOne({
+      $or: [{ email: SEED_ADMIN.email }, { adminId: SEED_ADMIN.adminId }, { regId: SEED_ADMIN.regId }]
+    });
 
-    const admin = await User.findOneAndUpdate(
-      { $or: [{ regId: adminData.regId }, { email: adminData.email }] },
-      {
-        regId: adminData.regId,
-        email: adminData.email,
-        password: adminHashedPassword,
-        role: adminData.role,
-        isApproved: adminData.isApproved,
-        twoFactorEnabled: adminData.twoFactorEnabled,
-        isFirstLogin: adminData.isFirstLogin,
-        profileImage: adminData.profileImage
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-    console.log(`   ✅ Admin created/updated: ${admin.regId} (${admin.email})`);
+    if (!adminUser) {
+      adminUser = await User.create({
+        ...SEED_ADMIN,
+        password: hashedPassword
+      });
+      console.log(`   ✅ Admin created: ${adminUser.adminId} (${adminUser.email})`);
+    } else {
+      adminUser.name = SEED_ADMIN.name;
+      adminUser.role = "ADMIN";
+      adminUser.department = SEED_ADMIN.department;
+      adminUser.designation = SEED_ADMIN.designation;
+      adminUser.isApproved = true;
+      adminUser.status = "APPROVED";
+      adminUser.password = hashedPassword;
+      await adminUser.save();
+      console.log(`   ✅ Admin updated: ${adminUser.adminId || adminUser.regId} (${adminUser.email})`);
+    }
 
-    // ── STEP 3: SEED HOD USER ──
+    // ── 2. Seed HOD User ──
     console.log("\n🎓 Seeding HOD User...");
-    const hodData = SEED_USERS.hod;
-    const hodHashedPassword = await bcrypt.hash(hodData.password, 10);
+    let hodUser = await HOD.findOne({
+      $or: [{ email: SEED_HOD.email }, { hodId: SEED_HOD.hodId }, { regId: SEED_HOD.regId }]
+    });
 
-    const hod = await HOD.findOneAndUpdate(
-      { $or: [{ employeeId: hodData.employeeId }, { email: hodData.email }] },
-      {
-        employeeId: hodData.employeeId,
-        name: hodData.name,
-        email: hodData.email,
-        password: hodHashedPassword,
-        department: hodData.department,
-        designation: hodData.designation,
-        role: hodData.role,
-        isApproved: hodData.isApproved,
-        status: hodData.status,
-        profileImage: hodData.profileImage
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-    console.log(`   ✅ HOD created/updated: ${hod.name} (${hod.department} - ${hod.email})`);
+    if (!hodUser) {
+      hodUser = await HOD.create({
+        ...SEED_HOD,
+        password: hashedPassword
+      });
+      console.log(`   ✅ HOD created: ${hodUser.name} (${hodUser.department} - ${hodUser.email})`);
+    } else {
+      hodUser.name = SEED_HOD.name;
+      hodUser.role = "HOD";
+      hodUser.department = SEED_HOD.department;
+      hodUser.designation = SEED_HOD.designation;
+      hodUser.isApproved = true;
+      hodUser.status = "APPROVED";
+      hodUser.password = hashedPassword;
+      await hodUser.save();
+      console.log(`   ✅ HOD updated: ${hodUser.name} (${hodUser.department} - ${hodUser.email})`);
+    }
 
-    // ── STEP 4: SEED DEPARTMENTS ──
+    // ── 3. Seed Departments ──
     console.log("\n🏢 Seeding Departments...");
     for (const d of SEED_DEPARTMENTS) {
-      const dept = await Department.findOneAndUpdate(
-        { $or: [{ code: d.code }, { name: d.name }] },
-        { ...d },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+      await Department.findOneAndUpdate(
+        { name: d.name },
+        { ...d, isActive: true },
+        { upsert: true, new: true }
       );
-      console.log(`   ✅ Department: ${dept.code} - ${dept.name} (HOD: ${dept.hod})`);
+      console.log(`   ✅ Department: ${d.name} (${d.code})`);
     }
 
-    // ── STEP 5: SEED ACADEMIC YEARS ──
+    // ── 4. Seed Academic Years ──
     console.log("\n📅 Seeding Academic Years & Archival Cycles...");
     for (const ay of SEED_ACADEMIC_YEARS) {
-      const academicYear = await AcademicYear.findOneAndUpdate(
+      await AcademicYear.findOneAndUpdate(
         { year: ay.year },
-        { ...ay },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        ay,
+        { upsert: true, new: true }
       );
-      console.log(`   ✅ Academic Year: ${academicYear.year} (${academicYear.label}) - ${academicYear.isCurrent ? '★ ACTIVE' : (academicYear.isArchived ? 'CLOCK ARCHIVED' : 'UPCOMING')}`);
+      console.log(`   ✅ Academic Year: ${ay.year} (${ay.label}) - ${ay.isCurrent ? "★ ACTIVE" : ay.isArchived ? "CLOCK ARCHIVED" : "UPCOMING"}`);
     }
 
-    // ── STEP 6: SEED CATEGORIES & TIERED SUBCATEGORIES ──
+    // ── 5. Seed All 34 Categories & Subcategories ──
     console.log("\n📑 Seeding Categories & Tiered Subcategories (Credit Config)...");
-    let totalSubCount = 0;
+    let totalSubcategoriesCount = 0;
     for (const cat of SEED_CATEGORIES) {
-      const category = await Category.findOneAndUpdate(
-        { $or: [{ key: cat.key }, { name: cat.name }] },
-        {
-          name: cat.name,
-          section: cat.section,
-          key: cat.key,
-          creditPoints: cat.creditPoints,
-          description: cat.description,
-          subcategories: cat.subcategories,
-          isActive: true
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+      await Category.findOneAndUpdate(
+        { name: cat.name },
+        cat,
+        { upsert: true, new: true }
       );
-      const subLength = category.subcategories?.length || 0;
-      totalSubCount += subLength;
-      console.log(`   ✅ [${category.section.toUpperCase()}] ${category.name} (${category.creditPoints} pts) — ${subLength} subcategories`);
+      totalSubcategoriesCount += (cat.subcategories || []).length;
+      console.log(`   ✅ [${cat.section.toUpperCase()}] ${cat.name} (${cat.creditPoints} pts) — ${(cat.subcategories || []).length} subcategories`);
     }
-    console.log(`   🎯 Total Categories: ${SEED_CATEGORIES.length}, Total Subcategories: ${totalSubCount}`);
+    console.log(`   🎯 Total Categories: ${SEED_CATEGORIES.length}, Total Subcategories: ${totalSubcategoriesCount}`);
 
-    // ── STEP 7: SEED CREDIT RULES ──
+    // ── 6. Seed Granular Credit Rules ──
     console.log("\n⚖️  Seeding Granular Credit Rules...");
     for (const rule of SEED_CREDIT_RULES) {
       await CreditRule.findOneAndUpdate(
         { ruleKey: rule.ruleKey },
-        { ...rule },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { ...rule, isActive: true },
+        { upsert: true, new: true }
       );
     }
     console.log(`   ✅ Seeded ${SEED_CREDIT_RULES.length} Credit Rules`);
@@ -608,31 +742,20 @@ async function seedDatabase(options = {}) {
     console.log("🎉 DATABASE SEEDING COMPLETED SUCCESSFULLY!");
     console.log("==========================================================");
     console.log("Default Login Credentials:");
-    console.log(`🔑 Admin Login: ID / Email: 'admin' or 'mokshyagnay@gmail.com' | Password: 'admin'`);
-    console.log(`🔑 HOD Login:   ID / Email: '23H71A0575!' or 'd.mokshyagnayadav@gmail.com' | Password: 'admin'`);
+    console.log("🔑 Admin Login: ID / Email: 'admin' or 'mokshyagnay@gmail.com' | Password: 'admin'");
+    console.log("🔑 HOD Login:   ID / Email: '23H71A0575!' or 'd.mokshyagnayadav@gmail.com' | Password: 'admin'");
     console.log("==========================================================\n");
 
   } catch (err) {
-    console.error("❌ Seeding Error:", err);
-    if (shouldDisconnect) process.exit(1);
-    throw err;
+    console.error("❌ SEEDING ERROR:", err);
   } finally {
-    if (shouldDisconnect) {
-      await mongoose.disconnect();
-      console.log("👋 Disconnected from MongoDB");
-    }
+    await mongoose.disconnect();
+    console.log("👋 Disconnected from MongoDB\n");
   }
 }
 
 if (require.main === module) {
-  seedDatabase({ reset: isReset, disconnect: true });
+  seedDatabase();
 }
 
-module.exports = {
-  seedDatabase,
-  SEED_USERS,
-  SEED_DEPARTMENTS,
-  SEED_ACADEMIC_YEARS,
-  SEED_CATEGORIES,
-  SEED_CREDIT_RULES
-};
+module.exports = seedDatabase;
