@@ -8,12 +8,12 @@ FROM node:20-slim AS builder
 WORKDIR /app
 
 # Copy root monorepo and workspace package manifests
-COPY package.json package-lock.json* ./
-COPY backend/package.json backend/package-lock.json* backend/
-COPY frontend/package.json frontend/package-lock.json* frontend/
+COPY package.json ./
+COPY backend/package.json backend/
+COPY frontend/package.json frontend/
 
-# Install full workspace dependencies for building
-RUN npm install
+# Install full workspace dependencies for building on Linux x64
+RUN npm install --no-package-lock --include=optional
 
 # Copy full source trees
 COPY backend/ backend/
@@ -33,10 +33,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && \
 
 # Copy root and backend package manifests
 COPY package.json ./
-COPY backend/package.json backend/package-lock.json* backend/
+COPY backend/package.json backend/
 
 # Install production-only dependencies for the backend
-RUN cd backend && npm install --omit=dev
+RUN cd backend && npm install --omit=dev --no-package-lock
 
 # Copy backend application source code
 COPY backend/ backend/
