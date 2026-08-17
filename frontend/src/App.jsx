@@ -1,4 +1,6 @@
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { initSocketClient } from './utils/socket';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
@@ -28,6 +30,11 @@ import FacultyUpload from './pages/faculty/Upload';
 import FacultyMyActivities from './pages/faculty/MyActivities';
 
 function App() {
+  useEffect(() => {
+    // Initialize persistent WebSocket connection
+    initSocketClient();
+  }, []);
+
   return (
     <Router>
       <Routes>

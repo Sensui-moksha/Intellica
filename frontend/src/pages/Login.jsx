@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { authApi } from '../api/services';
+import { joinSocketRooms } from '../utils/socket';
 import {
   Mail, Lock, Eye, EyeOff, ShieldCheck, KeyRound,
   ArrowRight, ArrowLeft, CheckCircle2, RotateCcw,
@@ -176,7 +177,14 @@ export default function Login() {
         localStorage.setItem('role', data.role);
         localStorage.setItem('userName', data.name || '');
         localStorage.setItem('department', data.department || '');
+        localStorage.setItem('userId', data.id || data._id || '');
         if (data.profileImage) localStorage.setItem('profileImage', data.profileImage);
+
+        joinSocketRooms({
+          role: data.role,
+          department: data.department || '',
+          userId: data.id || data._id || ''
+        });
 
         if (data.isFirstLogin) {
           navigate('/onboarding');
@@ -238,7 +246,14 @@ export default function Login() {
       localStorage.setItem('role', data.role);
       localStorage.setItem('userName', data.name || '');
       localStorage.setItem('department', data.department || '');
+      localStorage.setItem('userId', data.id || data._id || '');
       if (data.profileImage) localStorage.setItem('profileImage', data.profileImage);
+
+      joinSocketRooms({
+        role: data.role,
+        department: data.department || '',
+        userId: data.id || data._id || ''
+      });
 
       if (data.isFirstLogin) {
         navigate('/onboarding');

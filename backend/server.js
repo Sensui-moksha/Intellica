@@ -1,4 +1,5 @@
 const express  = require("express");
+const http     = require("http");
 const mongoose = require("mongoose");
 const cors     = require("cors");
 const session  = require("express-session");
@@ -6,6 +7,8 @@ const MongoStore = require("connect-mongo");
 const path     = require("path");
 const fs       = require("fs");
 require("dotenv").config();
+
+const { initSocket } = require("./utils/socket");
 
 // ── 1. Validate env vars ────────────────────────────────────────────────────
 require("./utils/validateEnv");
@@ -203,15 +206,22 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   HTTP SERVER & REAL-TIME WEBSOCKETS (SOCKET.IO)
+═══════════════════════════════════════════════════════════════════════════ */
+const httpServer = http.createServer(app);
+initSocket(httpServer, allowedOrigins);
+
+/* ═══════════════════════════════════════════════════════════════════════════
    START
 ═══════════════════════════════════════════════════════════════════════════ */
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("✅  MongoDB connected");
-    app.listen(backendPort, () => {
+    httpServer.listen(backendPort, () => {
       console.log(`🚀  Intellica API running on http://localhost:${backendPort}`);
       console.log(`🔐  Auth: session-cookie + jwt-bearer (hybrid)`);
+      console.log(`⚡  Real-time WebSockets: Socket.IO initialized`);
     });
   })
   .catch((err) => {

@@ -38,6 +38,13 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      // Real-time WebSocket / Socket.IO proxy
+      '/socket.io': {
+        target: `http://localhost:${BACKEND_PORT}`,
+        changeOrigin: true,
+        ws: true,
+        secure: false,
+      },
     },
   },
 });
