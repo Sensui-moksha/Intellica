@@ -50,7 +50,7 @@ export const hodApi = {
   getRejectedUploads: ()          => api.get('/uploads/hod/rejected'),
   approveUpload:      (id)        => api.put(`/uploads/hod/approve/${id}`),
   rejectUpload:       (id, data)  => api.put(`/uploads/hod/reject/${id}`, data),
-  reopenUpload:       (id)        => api.put(`/uploads/reopen/${id}`),
+  reopenUpload:       (id, data)  => api.put(`/uploads/reopen/${id}`, data),
   discussUpload:      (id, data)  => api.put(`/uploads/discussion/${id}`, data),
   getFacultyUploads:  (facultyId) => api.get(`/hod/faculty-uploads/${facultyId}`),
   getDepartmentUploads: ()        => api.get('/hod/department-uploads'),
@@ -83,7 +83,7 @@ export const adminApi = {
   getRejectedUploads:    ()          => api.get('/uploads/admin/rejected'),
   approveUpload:         (id)        => api.put(`/uploads/admin/approve/${id}`),
   rejectUpload:          (id, data)  => api.put(`/uploads/admin/reject/${id}`, data),
-  reopenUpload:          (id)        => api.put(`/uploads/reopen/${id}`),
+  reopenUpload:          (id, data)  => api.put(`/uploads/reopen/${id}`, data),
   discussUpload:         (id, data)  => api.put(`/uploads/discussion/${id}`, data),
 };
 

@@ -176,12 +176,12 @@ export default function HodApprovals() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Department Approvals</h1>
           <p className="text-slate-500 text-xs mt-0.5">
-            Review faculty research submissions for your department before submitting to Administration.
+            Review and approve faculty research submissions. Departmental approval is final and immediately awards academic credits.
           </p>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-2xl border border-slate-200/80 shrink-0">
+        {/* Tab Filter Pills */}
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200 self-start">
           <button
             onClick={() => handleTabChange('PENDING')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
@@ -191,7 +191,7 @@ export default function HodApprovals() {
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
-            <span>Pending</span>
+            <span>Pending Review</span>
             <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-extrabold ${
               activeTab === 'PENDING' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'
             }`}>
@@ -208,7 +208,7 @@ export default function HodApprovals() {
             }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Forwarded / Approved</span>
+            <span>Approved & Finalized</span>
             <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-extrabold ${
               activeTab === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
             }`}>
@@ -261,6 +261,7 @@ export default function HodApprovals() {
               <AnimatePresence>
                 {filteredList.map(item => {
                   const isSel = selected?._id === item._id;
+                  const isReopenedByAdmin = item.status === 'REOPENED_FOR_HOD';
                   return (
                     <motion.button
                       key={item._id}
@@ -279,18 +280,27 @@ export default function HodApprovals() {
                             ? 'border-rose-300 bg-rose-50/70 shadow-sm'
                             : activeTab === 'APPROVED'
                               ? 'border-emerald-300 bg-emerald-50/70 shadow-sm'
-                              : 'border-blue-300 bg-blue-50/70 shadow-sm'
-                          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs'
+                              : isReopenedByAdmin
+                                ? 'border-amber-400 bg-amber-50/80 shadow-sm'
+                                : 'border-blue-300 bg-blue-50/70 shadow-sm'
+                          : isReopenedByAdmin
+                            ? 'border-amber-300 bg-amber-50/40 hover:bg-amber-50/70'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-bold text-slate-900 text-xs line-clamp-2">{getItemTitle(item)}</p>
-                        {activeTab === 'REJECTED' && (
+                        {isReopenedByAdmin && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300/80 shrink-0">
+                            Admin Reopened
+                          </span>
+                        )}
+                        {!isReopenedByAdmin && activeTab === 'REJECTED' && (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-700 shrink-0">
                             Rejected
                           </span>
                         )}
-                        {activeTab === 'APPROVED' && (
+                        {!isReopenedByAdmin && activeTab === 'APPROVED' && (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-700 shrink-0">
                             Approved
                           </span>
@@ -400,9 +410,9 @@ export default function HodApprovals() {
                   )}
 
                   {/* Status Pill */}
-                  {['HOD_APPROVED', 'HOD_SUBMITTED', 'ADMIN_APPROVED'].includes(selected.status) && (
+                  {['APPROVED', 'HOD_APPROVED', 'HOD_SUBMITTED', 'ADMIN_APPROVED'].includes(selected.status) && (
                     <div className="px-3 py-1 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-700 flex items-center gap-1.5 shrink-0">
-                      <CheckCircle2 className="w-4 h-4" /> Approved
+                      <CheckCircle2 className="w-4 h-4" /> Approved & Finalized
                     </div>
                   )}
                   {['HOD_REJECTED', 'ADMIN_REJECTED', 'REJECTED'].includes(selected.status) && (
@@ -410,8 +420,24 @@ export default function HodApprovals() {
                       <XCircle className="w-4 h-4" /> Rejected
                     </div>
                   )}
+                  {selected.status === 'REOPENED_FOR_HOD' && (
+                    <div className="px-3 py-1 bg-amber-50 border border-amber-300 rounded-xl text-xs font-bold text-amber-800 flex items-center gap-1.5 shrink-0">
+                      <AlertTriangle className="w-4 h-4 text-amber-600" /> Admin Re-opened Review
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* Admin Audit Note / Re-Review Banner */}
+              {selected.adminComment && (
+                <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl text-xs flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Administrator Audit Note / Re-Review Request:</p>
+                    <p className="text-[11px] mt-0.5">{selected.adminComment}</p>
+                  </div>
+                </div>
+              )}
 
               {/* Rejection Banner if Rejected */}
               {selected.rejectionReason && (
@@ -453,7 +479,7 @@ export default function HodApprovals() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-800">
-                        {actionType === 'REJECT' ? 'Specify Reason for Rejection:' : 'Revision Feedback / Discussion Notes:'}
+                        {actionType === 'REJECT' ? 'Specify Reason for Rejection:' : 'Revision Feedback / Discussion Notes for Faculty:'}
                       </span>
                       <button
                         onClick={() => { setActionType(null); setActionComment(''); }}
@@ -487,7 +513,7 @@ export default function HodApprovals() {
                           className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                         >
                           <MessageSquare className="w-3.5 h-3.5" />
-                          <span>{acting ? 'Sending…' : 'Send Revision Request'}</span>
+                          <span>{acting ? 'Sending…' : 'Send Revision to Faculty'}</span>
                         </button>
                       )}
                     </div>
@@ -498,21 +524,24 @@ export default function HodApprovals() {
               {/* Bottom Action Footer */}
               {!actionType && (() => {
                 const isRejected = ['HOD_REJECTED', 'ADMIN_REJECTED', 'REJECTED'].includes(selected.status);
-                const isApproved = ['HOD_APPROVED', 'HOD_SUBMITTED', 'ADMIN_APPROVED'].includes(selected.status);
+                const isApproved = ['APPROVED', 'HOD_APPROVED', 'HOD_SUBMITTED', 'ADMIN_APPROVED'].includes(selected.status);
+                const isReopenedByAdmin = selected.status === 'REOPENED_FOR_HOD';
                 const isPending = !isRejected && !isApproved;
 
                 return (
                   <div className="flex items-center justify-between pt-1">
                     <div className="text-xs text-slate-400">
                       {isPending
-                        ? 'Awaiting Departmental Review'
+                        ? isReopenedByAdmin
+                          ? 'Admin Requested Re-Review — Pending Department Action'
+                          : 'Awaiting Departmental Review & Final Approval'
                         : isRejected
                           ? 'Status: Rejected by Authority'
-                          : 'Status: Approved / Forwarded to Admin'}
+                          : 'Status: Approved & Credits Awarded'}
                     </div>
 
                     <div className="flex items-center gap-2.5">
-                      {/* PENDING ACTIONS */}
+                      {/* PENDING / REOPENED ACTIONS */}
                       {isPending && (
                         <>
                           <button
@@ -520,7 +549,7 @@ export default function HodApprovals() {
                             className="flex items-center gap-1.5 px-3.5 py-2 border rounded-xl text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200 transition-colors cursor-pointer"
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
-                            <span>Needs Revision</span>
+                            <span>Request Revision</span>
                           </button>
 
                           <button
@@ -537,12 +566,12 @@ export default function HodApprovals() {
                             className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
                           >
                             <CheckCircle className="w-3.5 h-3.5" />
-                            <span>{acting ? 'Approving…' : 'Approve & Forward'}</span>
+                            <span>{acting ? 'Approving…' : 'Approve & Finalize'}</span>
                           </button>
                         </>
                       )}
 
-                      {/* REJECTED ACTIONS - NEVER SHOW REJECT AGAIN */}
+                      {/* REJECTED ACTIONS */}
                       {isRejected && (
                         <>
                           <button
@@ -565,7 +594,7 @@ export default function HodApprovals() {
                         </>
                       )}
 
-                      {/* APPROVED ACTIONS - NEVER SHOW APPROVE AGAIN */}
+                      {/* APPROVED ACTIONS */}
                       {isApproved && (
                         <>
                           <button

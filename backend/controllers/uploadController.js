@@ -6,7 +6,7 @@ const path = require("path");
 const fs = require("fs");
 const { getUploadBaseDir } = require("../utils/storagePath");
 const Notification = require("../models/Notification");
-const { emitToRole, emitToUser, broadcastEvent } = require("../utils/socket");
+const { emitToRole, emitToUser, emitToDepartment, broadcastEvent } = require("../utils/socket");
 const { sendFacultyNotificationEmail } = require("../utils/emailService");
 
 
@@ -94,8 +94,8 @@ if (isNaN(year)) {
 }
 let status;
 if(req.user.role === "FACULTY"){ status = "FACULTY_SUBMITTED"; }
-if(req.user.role === "HOD"){ status = "HOD_SUBMITTED"; }
-if(req.user.role === "ADMIN"){ status = "ADMIN_APPROVED"; }
+if(req.user.role === "HOD"){ status = "APPROVED"; }
+if(req.user.role === "ADMIN"){ status = "APPROVED"; }
 const upload = await Upload.create({
 faculty: req.user.id,
 createdByRole: req.user.role,
@@ -117,13 +117,14 @@ if (req.user.role === "FACULTY") {
   emitToDepartment(req.user.department, "approvals:update", { action: "NEW_SUBMISSION", upload });
 } else if (req.user.role === "HOD") {
   const notif = await Notification.create({
-    message: `HOD (${req.user.name || "HOD"}) submitted activity: "${title}" (${req.user.department || "Academic"}). Awaiting Admin review.`,
+    message: `HOD (${req.user.name || "HOD"}) uploaded activity: "${title}" (${req.user.department || "Academic"}). Approved and awarded ${credits} credits.`,
     role: "ADMIN",
     type: "SUBMISSION",
     uploadId: upload._id
   }).catch(() => {});
   if (notif) emitToRole("ADMIN", "notification:new", notif);
   emitToRole("ADMIN", "approvals:update", { action: "NEW_SUBMISSION", upload });
+  broadcastEvent("sync:credits", { department: req.user.department });
 }
 
 broadcastEvent("sync:approvals", { action: "NEW_SUBMISSION", id: upload._id });
@@ -159,44 +160,48 @@ const body = { ...req.body };
 Object.keys(body).forEach(key => {
 if (Array.isArray(body[key])) { body[key] = body[key][0]; }
 });
-const category = req.params.category;
-let title = body.title || "";
-if (category === "mou" && !title) { title = body.organization || ""; }
-const metadata = { ...(uploadDoc.metadata || {}) };
-Object.keys(body).forEach(key => {
-  if(key === "title") return;
-  const value = body[key];
-  if(value !== "" && value !== null && value !== undefined){ metadata[key] = value; }
-});
-const changedFields = [];
-const oldMetadata = uploadDoc.metadata || {};
-const allKeys = new Set([...Object.keys(oldMetadata), ...Object.keys(metadata)]);
-allKeys.forEach(key => {
-const oldValue = (oldMetadata[key] ?? "").toString().trim();
-const newValue = (metadata[key] ?? "").toString().trim();
-if(oldValue !== newValue){ changedFields.push(key); }
-});
-if((uploadDoc.title || "").toString().trim() !== title.toString().trim()){
-changedFields.push("title");
-}
-const subcategory = (body.subcategory || metadata.subcategory || uploadDoc.subcategory || "").trim();
-uploadDoc.subcategory = subcategory;
-uploadDoc.previousMetadata = { ...oldMetadata };
-uploadDoc.metadata = metadata;
-uploadDoc.changedFields = changedFields;
-uploadDoc.credits = await calculateCredits({ category, metadata, subcategory });
-uploadDoc.category = category;
-uploadDoc.title = title;
 
-if (body.year !== undefined && body.year !== null && body.year !== "") {
-  const yearValue = String(body.year).trim();
-  const parsedYear = parseInt(yearValue, 10);
-  if (!isNaN(parsedYear)) {
-    uploadDoc.year = parsedYear;
-  }
+const category = (req.params.category || uploadDoc.category || "").trim().replace(/[^a-zA-Z0-9_\-]/g, "");
+if (!category) {
+  return res.status(400).json({ message: "Invalid category" });
 }
-if(req.user.role === "FACULTY"){ uploadDoc.status = "FACULTY_SUBMITTED"; }
-if(req.user.role === "HOD"){ uploadDoc.status = "HOD_SUBMITTED"; }
+const escapedCat = category.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const validCat = await Category.findOne({ name: new RegExp('^' + escapedCat + '$', 'i'), isActive: true });
+if (!validCat) {
+  return res.status(400).json({ message: "Invalid or inactive category" });
+}
+
+let title = (body.title || "").trim();
+if (!title) {
+  title = body.paperTitle || body.thesisTopic || body.projectTitle || body.patentTitle || body.bookTitle || body.courseName || body.fdpTitle || body.workshopTitle || body.seminarTitle || body.webinarTitle || body.name || body.topic || uploadDoc.title;
+}
+
+const metadata = { ...body };
+delete metadata.title;
+delete metadata.category;
+delete metadata.faculty;
+delete metadata.credits;
+
+const subcategory = (body.subcategory || metadata.subcategory || uploadDoc.subcategory || "").trim();
+const credits = await calculateCredits({ category, metadata, subcategory });
+
+const yearVal = String(body.year || uploadDoc.year || "").trim();
+let year = parseInt(yearVal, 10);
+if (isNaN(year)) {
+  year = new Date().getFullYear();
+}
+
+uploadDoc.category = category;
+uploadDoc.subcategory = subcategory;
+uploadDoc.title = title;
+uploadDoc.metadata = metadata;
+uploadDoc.credits = credits;
+uploadDoc.year = year;
+uploadDoc.status = "FACULTY_SUBMITTED"; // resubmitted for review
+uploadDoc.rejectionReason = "";
+uploadDoc.rejectedBy = "";
+uploadDoc.rejectedAt = null;
+
 if(req.files && req.files.length>0){
   let mainFile = req.files.find(f => f.fieldname === "file" || f.fieldname === "document") || req.files[0];
   if(mainFile && fs.existsSync(mainFile.path)){
@@ -226,6 +231,7 @@ res.json({ message:"Upload updated and resubmitted for review successfully", upl
 }
 };
 
+/* GET PENDING UPLOADS FOR HOD */
 exports.getPendingUploadsForHOD = async(req,res)=>{
 try{
 if(req.user.role!=="HOD"){
@@ -233,10 +239,10 @@ return res.status(403).json({message:"Access denied"});
 }
 const uploads = await Upload.find({
 department:req.user.department,
-status:"FACULTY_SUBMITTED"
+status: { $in: ["FACULTY_SUBMITTED", "PENDING", "HOD_COMMENT", "NEEDS_REVISION", "REOPENED_FOR_HOD"] }
 })
 .populate("faculty","name employeeId department role")
-.sort({createdAt:-1});
+.sort({updatedAt:-1, createdAt:-1});
 res.json(uploads);
 }catch(err){
 console.error(err);
@@ -244,6 +250,7 @@ res.status(500).json({ message:"Error fetching uploads" });
 }
 };
 
+/* HOD FINAL APPROVE UPLOAD */
 exports.approveUploadByHOD = async(req,res)=>{
 try{
 if(req.user.role!=="HOD"){
@@ -254,7 +261,7 @@ if(!uploadDoc){ return res.status(404).json({message:"Upload not found"}); }
 if(uploadDoc.department !== req.user.department){
 return res.status(403).json({message:"Access denied (Different department)"});
 }
-uploadDoc.status="HOD_APPROVED";
+uploadDoc.status="APPROVED";
 uploadDoc.adminComment = "";
 uploadDoc.hodComment = "";
 uploadDoc.discussionComments = "";
@@ -263,36 +270,28 @@ uploadDoc.rejectedBy = "";
 uploadDoc.rejectedAt = null;
 await uploadDoc.save();
 
-    const notifAdmin = await Notification.create({
-      message: `Upload "${uploadDoc.title}" (${uploadDoc.department}) was approved by HOD (${req.user.name || "HOD"}). Awaiting Admin verification.`,
-      role: "ADMIN",
-      type: "APPROVAL",
-      uploadId: uploadDoc._id
-    }).catch(() => {});
-    if (notifAdmin) emitToRole("ADMIN", "notification:new", notifAdmin);
-    emitToRole("ADMIN", "approvals:update", { action: "HOD_APPROVED", upload: uploadDoc });
-
     const notifFac = await Notification.create({
-      message: `Your upload "${uploadDoc.title}" has been approved by your HOD (${req.user.name || "HOD"}). Forwarded to Admin.`,
+      message: `Your submission "${uploadDoc.title}" has been approved by your HOD (${req.user.name || "HOD"}) and awarded ${uploadDoc.credits || 0} credits.`,
       userId: uploadDoc.faculty,
       role: "FACULTY",
       type: "APPROVAL",
       uploadId: uploadDoc._id
     }).catch(() => {});
     if (notifFac) emitToUser(uploadDoc.faculty, "notification:new", notifFac);
-    emitToUser(uploadDoc.faculty, "approvals:update", { action: "HOD_APPROVED", upload: uploadDoc });
+    emitToUser(uploadDoc.faculty, "approvals:update", { action: "APPROVED", upload: uploadDoc });
 
-    broadcastEvent("sync:approvals", { action: "HOD_APPROVED", id: uploadDoc._id });
+    broadcastEvent("sync:approvals", { action: "APPROVED", id: uploadDoc._id });
+    broadcastEvent("sync:credits", { department: uploadDoc.department });
 
-    // Email faculty about HOD approval (non-blocking)
+    // Email faculty about final HOD approval (non-blocking)
     Promise.resolve().then(async () => {
       try {
         const fac = await Faculty.findById(uploadDoc.faculty).select('name email').lean();
-        if (fac) await sendFacultyNotificationEmail(fac, uploadDoc.title, 'HOD_APPROVED', `HOD (${req.user.name || 'HOD'})`);
+        if (fac) await sendFacultyNotificationEmail(fac, uploadDoc.title, 'APPROVED', `HOD (${req.user.name || 'HOD'})`, null, uploadDoc.credits);
       } catch (e) { console.error('[EMAIL] HOD approval notification failed:', e.message); }
     });
 
-    res.json({ message:"Approved by HOD" });
+    res.json({ message:"Upload approved successfully by HOD", upload: uploadDoc });
 
   }catch(err){
     console.error(err);
@@ -311,9 +310,10 @@ exports.rejectUploadByHOD = async (req, res) => {
     if (uploadDoc.department !== req.user.department) {
       return res.status(403).json({ message: "Access denied (Different department)" });
     }
-    uploadDoc.status = "HOD_REJECTED";
-    uploadDoc.hodComment = req.body.reason || "Rejected by HOD";
-    uploadDoc.rejectionReason = req.body.reason || "Rejected by HOD";
+    const reason = req.body.reason || "Rejected by HOD";
+    uploadDoc.status = "REJECTED";
+    uploadDoc.hodComment = reason;
+    uploadDoc.rejectionReason = reason;
     uploadDoc.rejectedBy = `HOD (${req.user.name || "HOD"})`;
     uploadDoc.rejectedAt = new Date();
     await uploadDoc.save();
@@ -326,9 +326,10 @@ exports.rejectUploadByHOD = async (req, res) => {
       uploadId: uploadDoc._id
     }).catch(() => {});
     if (notif) emitToUser(uploadDoc.faculty, "notification:new", notif);
-    emitToUser(uploadDoc.faculty, "approvals:update", { action: "HOD_REJECTED", upload: uploadDoc });
+    emitToUser(uploadDoc.faculty, "approvals:update", { action: "REJECTED", upload: uploadDoc });
 
-    broadcastEvent("sync:approvals", { action: "HOD_REJECTED", id: uploadDoc._id });
+    broadcastEvent("sync:approvals", { action: "REJECTED", id: uploadDoc._id });
+    broadcastEvent("sync:credits", { department: uploadDoc.department });
 
     // Email faculty about HOD rejection (non-blocking)
     Promise.resolve().then(async () => {
@@ -354,7 +355,7 @@ exports.getApprovedUploadsForHOD = async (req, res) => {
     }
     const uploads = await Upload.find({
       department: req.user.department,
-      status: { $in: ["HOD_APPROVED", "HOD_SUBMITTED", "ADMIN_APPROVED"] }
+      status: { $in: ["APPROVED", "HOD_APPROVED", "ADMIN_APPROVED"] }
     })
       .populate("faculty", "name employeeId department role")
       .sort({ updatedAt: -1 });
@@ -373,7 +374,7 @@ exports.getRejectedUploadsForHOD = async (req, res) => {
     }
     const uploads = await Upload.find({
       department: req.user.department,
-      status: { $in: ["HOD_REJECTED", "ADMIN_REJECTED", "REJECTED"] }
+      status: { $in: ["REJECTED", "HOD_REJECTED", "ADMIN_REJECTED"] }
     })
       .populate("faculty", "name employeeId department role")
       .sort({ updatedAt: -1 });
@@ -384,16 +385,17 @@ exports.getRejectedUploadsForHOD = async (req, res) => {
   }
 };
 
+/* GET PENDING UPLOADS FOR ADMIN */
 exports.getPendingUploadsForAdmin = async(req,res)=>{
 try{
 if(req.user.role!=="ADMIN"){
 return res.status(403).json({message:"Access denied"});
 }
     const uploads = await Upload.find({
-      status: { $in: ["HOD_SUBMITTED", "HOD_APPROVED", "ADMIN_COMMENT"] }
+      status: { $in: ["FACULTY_SUBMITTED", "PENDING", "HOD_SUBMITTED", "HOD_COMMENT", "REOPENED_FOR_HOD", "NEEDS_REVISION"] }
     })
 .populate("faculty","name employeeId department role")
-.sort({createdAt:-1});
+.sort({updatedAt:-1, createdAt:-1});
 res.json(uploads);
 }catch(err){
 console.error(err);
@@ -401,6 +403,7 @@ res.status(500).json({ message:"Error fetching uploads" });
 }
 };
 
+/* ADMIN APPROVE UPLOAD */
 exports.approveUploadByAdmin = async(req,res)=>{
 try{
 if(req.user.role!=="ADMIN"){
@@ -408,7 +411,7 @@ return res.status(403).json({message:"Access denied"});
 }
 const uploadDoc = await Upload.findById(req.params.id);
 if(!uploadDoc){ return res.status(404).json({message:"Upload not found"}); }
-uploadDoc.status="ADMIN_APPROVED";
+uploadDoc.status="APPROVED";
 uploadDoc.adminComment = "";
 uploadDoc.hodComment = "";
 uploadDoc.discussionComments = "";
@@ -425,7 +428,7 @@ await uploadDoc.save();
       uploadId: uploadDoc._id
     }).catch(() => {});
     if (notifFac) emitToUser(uploadDoc.faculty, "notification:new", notifFac);
-    emitToUser(uploadDoc.faculty, "approvals:update", { action: "ADMIN_APPROVED", upload: uploadDoc });
+    emitToUser(uploadDoc.faculty, "approvals:update", { action: "APPROVED", upload: uploadDoc });
 
     const notifHod = await Notification.create({
       message: `Upload "${uploadDoc.title}" (${uploadDoc.department}) has been verified and approved by Administrator.`,
@@ -435,9 +438,9 @@ await uploadDoc.save();
       uploadId: uploadDoc._id
     }).catch(() => {});
     if (notifHod) emitToDepartment(uploadDoc.department, "notification:new", notifHod);
-    emitToDepartment(uploadDoc.department, "approvals:update", { action: "ADMIN_APPROVED", upload: uploadDoc });
+    emitToDepartment(uploadDoc.department, "approvals:update", { action: "APPROVED", upload: uploadDoc });
 
-    broadcastEvent("sync:approvals", { action: "ADMIN_APPROVED", id: uploadDoc._id });
+    broadcastEvent("sync:approvals", { action: "APPROVED", id: uploadDoc._id });
     broadcastEvent("sync:credits", { department: uploadDoc.department });
 
     // Email faculty about Admin approval (non-blocking)
@@ -448,7 +451,7 @@ await uploadDoc.save();
       } catch (e) { console.error('[EMAIL] Admin approval notification failed:', e.message); }
     });
 
-    res.json({ message:"Upload approved by admin" });
+    res.json({ message:"Upload approved by admin", upload: uploadDoc });
 
   }catch(err){
     console.error(err);
@@ -456,7 +459,7 @@ await uploadDoc.save();
   }
 };
 
-/* ADMIN REJECT UPLOAD */
+/* ADMIN REVOKE & REJECT UPLOAD */
 exports.rejectUploadByAdmin = async (req, res) => {
   try {
     if (req.user.role !== "ADMIN") {
@@ -464,26 +467,38 @@ exports.rejectUploadByAdmin = async (req, res) => {
     }
     const uploadDoc = await Upload.findById(req.params.id);
     if (!uploadDoc) { return res.status(404).json({ message: "Upload not found" }); }
-    uploadDoc.status = "ADMIN_REJECTED";
-    uploadDoc.adminComment = req.body.reason || "Rejected by Admin";
-    uploadDoc.rejectionReason = req.body.reason || "Rejected by Admin";
-    uploadDoc.rejectedBy = `Admin (${req.user.name || "Admin"})`;
+    
+    const reason = req.body.reason || req.body.comment || "Revoked & Rejected by Administrator";
+    uploadDoc.status = "REJECTED";
+    uploadDoc.adminComment = reason;
+    uploadDoc.rejectionReason = reason;
+    uploadDoc.rejectedBy = `Administrator (${req.user.name || "Admin"})`;
     uploadDoc.rejectedAt = new Date();
     await uploadDoc.save();
 
     const notif = await Notification.create({
-      message: `Your upload "${uploadDoc.title}" was rejected by Administrator: ${uploadDoc.adminComment}`,
+      message: `Your upload "${uploadDoc.title}" was revoked & rejected by Administrator: ${uploadDoc.adminComment}`,
       userId: uploadDoc.faculty,
       role: "FACULTY",
       type: "REJECTION",
       uploadId: uploadDoc._id
     }).catch(() => {});
     if (notif) emitToUser(uploadDoc.faculty, "notification:new", notif);
-    emitToUser(uploadDoc.faculty, "approvals:update", { action: "ADMIN_REJECTED", upload: uploadDoc });
+    emitToUser(uploadDoc.faculty, "approvals:update", { action: "REJECTED", upload: uploadDoc });
 
-    broadcastEvent("sync:approvals", { action: "ADMIN_REJECTED", id: uploadDoc._id });
+    const notifHod = await Notification.create({
+      message: `Upload "${uploadDoc.title}" (${uploadDoc.department}) was revoked & rejected by Administrator: ${uploadDoc.adminComment}`,
+      role: "HOD",
+      department: uploadDoc.department,
+      type: "REJECTION",
+      uploadId: uploadDoc._id
+    }).catch(() => {});
+    if (notifHod) emitToDepartment(uploadDoc.department, "notification:new", notifHod);
 
-    // Email faculty about Admin rejection (non-blocking)
+    broadcastEvent("sync:approvals", { action: "REJECTED", id: uploadDoc._id });
+    broadcastEvent("sync:credits", { department: uploadDoc.department });
+
+    // Email faculty about Admin revocation (non-blocking)
     Promise.resolve().then(async () => {
       try {
         const fac = await Faculty.findById(uploadDoc.faculty).select('name email').lean();
@@ -491,7 +506,7 @@ exports.rejectUploadByAdmin = async (req, res) => {
       } catch (e) { console.error('[EMAIL] Admin rejection notification failed:', e.message); }
     });
 
-    res.json({ message: "Document rejected by Admin", upload: uploadDoc });
+    res.json({ message: "Document revoked and rejected by Admin", upload: uploadDoc });
 
   } catch (err) {
     console.error(err);
@@ -506,7 +521,7 @@ exports.getApprovedUploadsForAdmin = async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
     const uploads = await Upload.find({
-      status: "ADMIN_APPROVED"
+      status: { $in: ["APPROVED", "ADMIN_APPROVED", "HOD_APPROVED"] }
     })
       .populate("faculty", "name employeeId department role")
       .sort({ updatedAt: -1 });
@@ -524,7 +539,7 @@ exports.getRejectedUploadsForAdmin = async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
     const uploads = await Upload.find({
-      status: { $in: ["ADMIN_REJECTED", "HOD_REJECTED", "REJECTED"] }
+      status: { $in: ["REJECTED", "ADMIN_REJECTED", "HOD_REJECTED"] }
     })
       .populate("faculty", "name employeeId department role")
       .sort({ updatedAt: -1 });
@@ -547,20 +562,78 @@ exports.reopenUpload = async (req, res) => {
       return res.status(404).json({ message: "Upload not found" });
     }
 
-    if (req.user.role === "HOD") {
-      uploadDoc.status = "FACULTY_SUBMITTED";
-      uploadDoc.rejectionReason = "";
-      uploadDoc.rejectedBy = "";
-      uploadDoc.rejectedAt = null;
-    } else if (req.user.role === "ADMIN") {
-      uploadDoc.status = "HOD_SUBMITTED";
-      uploadDoc.rejectionReason = "";
-      uploadDoc.rejectedBy = "";
-      uploadDoc.rejectedAt = null;
-    }
+    const reason = (req.body.reason || req.body.comment || "").trim();
 
-    await uploadDoc.save();
-    res.json({ message: "Upload moved back to pending review", upload: uploadDoc });
+    if (req.user.role === "ADMIN") {
+      // Admin re-opens review -> Routes to HOD (NOT directly to faculty)
+      uploadDoc.status = "REOPENED_FOR_HOD";
+      uploadDoc.adminComment = reason || "Administrator requested re-review on this document.";
+      uploadDoc.rejectionReason = "";
+      uploadDoc.rejectedBy = "";
+      uploadDoc.rejectedAt = null;
+      await uploadDoc.save();
+
+      // Notify HOD of that department
+      const notifHod = await Notification.create({
+        message: `Administrator requested re-review on "${uploadDoc.title}" (${uploadDoc.department}): "${uploadDoc.adminComment}". Please review.`,
+        role: "HOD",
+        department: uploadDoc.department,
+        type: "DISCUSSION",
+        uploadId: uploadDoc._id
+      }).catch(() => {});
+      if (notifHod) emitToDepartment(uploadDoc.department, "notification:new", notifHod);
+      emitToDepartment(uploadDoc.department, "approvals:update", { action: "REOPENED_FOR_HOD", upload: uploadDoc });
+
+      broadcastEvent("sync:approvals", { action: "REOPENED_FOR_HOD", id: uploadDoc._id });
+      broadcastEvent("sync:credits", { department: uploadDoc.department });
+
+      return res.json({ message: "Proposal re-opened and routed to HOD for review", upload: uploadDoc });
+    } else if (req.user.role === "HOD") {
+      if (uploadDoc.department !== req.user.department) {
+        return res.status(403).json({ message: "Access denied (Different department)" });
+      }
+
+      if (req.body.needsRevision || req.body.sendToFaculty) {
+        // HOD sends to Faculty for revisions
+        uploadDoc.status = "NEEDS_REVISION";
+        uploadDoc.hodComment = reason || "HOD requested revisions on this document.";
+        uploadDoc.rejectionReason = "";
+        uploadDoc.rejectedBy = "";
+        uploadDoc.rejectedAt = null;
+        await uploadDoc.save();
+
+        const notif = await Notification.create({
+          message: `HOD (${req.user.name || "HOD"}) requested revisions on "${uploadDoc.title}": ${uploadDoc.hodComment}`,
+          userId: uploadDoc.faculty,
+          role: "FACULTY",
+          type: "DISCUSSION",
+          uploadId: uploadDoc._id
+        }).catch(() => {});
+        if (notif) emitToUser(uploadDoc.faculty, "notification:new", notif);
+        emitToUser(uploadDoc.faculty, "approvals:update", { action: "NEEDS_REVISION", upload: uploadDoc });
+
+        broadcastEvent("sync:approvals", { action: "NEEDS_REVISION", id: uploadDoc._id });
+
+        // Email faculty about revision (non-blocking)
+        Promise.resolve().then(async () => {
+          try {
+            const fac = await Faculty.findById(uploadDoc.faculty).select('name email').lean();
+            if (fac) await sendFacultyNotificationEmail(fac, uploadDoc.title, 'REVISION', `HOD (${req.user.name || 'HOD'})`, uploadDoc.hodComment);
+          } catch (e) { console.error('[EMAIL] HOD revision notification failed:', e.message); }
+        });
+
+        return res.json({ message: "Revision requested from faculty", upload: uploadDoc });
+      } else {
+        uploadDoc.status = "FACULTY_SUBMITTED";
+        uploadDoc.rejectionReason = "";
+        uploadDoc.rejectedBy = "";
+        uploadDoc.rejectedAt = null;
+        await uploadDoc.save();
+
+        broadcastEvent("sync:approvals", { action: "MOVED_TO_PENDING", id: uploadDoc._id });
+        return res.json({ message: "Upload moved back to pending review", upload: uploadDoc });
+      }
+    }
   } catch (err) {
     console.error("REOPEN UPLOAD ERROR:", err);
     res.status(500).json({ message: "Failed to reopen upload" });
@@ -661,7 +734,7 @@ exports.getDepartmentUploads = async (req, res) => {
     }
     let query = {
       status: {
-        $in: ["FACULTY_SUBMITTED","HOD_SUBMITTED","HOD_APPROVED","ADMIN_APPROVED"]
+        $in: ["APPROVED", "FACULTY_SUBMITTED", "HOD_SUBMITTED", "HOD_APPROVED", "ADMIN_APPROVED", "REOPENED_FOR_HOD"]
       }
     };
     if (req.user.role === "HOD") {
@@ -669,10 +742,7 @@ exports.getDepartmentUploads = async (req, res) => {
     } else if (req.user.role === "ADMIN" && req.query.department) {
       query.department = req.query.department;
     }
-    console.log("Role:", req.user.role);
-    console.log("Query:", JSON.stringify(query));
     const uploads = await Upload.find(query).sort({ createdAt: -1 });
-    console.log("Found:", uploads.length);
     const Faculty = require("../models/Faculty");
     const HOD = require("../models/HOD");
     const formattedUploads = await Promise.all(
@@ -704,9 +774,8 @@ exports.getDepartmentRank = async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
-     
     const allUploads = await Upload.find({
-      status: { $in: ["HOD_APPROVED", "ADMIN_APPROVED"] }
+      status: { $in: ["APPROVED", "HOD_APPROVED", "ADMIN_APPROVED"] }
     });
 
     // Department wise credits sum 

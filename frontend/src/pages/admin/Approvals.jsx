@@ -139,9 +139,9 @@ export default function AdminApprovals() {
       if (decision === 'APPROVED') {
         await adminApi.approveUpload(id);
       } else if (decision === 'REJECTED') {
-        await adminApi.rejectUpload(id, { reason: actionComment || 'Rejected by Admin' });
+        await adminApi.rejectUpload(id, { reason: actionComment || 'Revoked & Rejected by Administrator' });
       } else if (decision === 'REOPEN') {
-        await adminApi.reopenUpload(id);
+        await adminApi.reopenUpload(id, { reason: actionComment || 'Administrator requested re-review on this document.' });
       } else if (decision === 'DISCUSSION') {
         await adminApi.discussUpload(id, { comment: actionComment, needsRevision: true });
       }
@@ -609,7 +609,7 @@ export default function AdminApprovals() {
                   )}
                 </div>
 
-                {/* Action Box: Discussion or Rejection Reason Form */}
+                {/* Action Box: Discussion, Re-open to HOD, or Revoke & Reject Reason Form */}
                 <AnimatePresence>
                   {actionType && (
                     <motion.div
@@ -617,11 +617,22 @@ export default function AdminApprovals() {
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       className="p-3.5 bg-slate-50 border rounded-2xl space-y-2.5"
-                      style={{ borderColor: actionType === 'REJECT' ? '#fecdd3' : '#bfdbfe' }}
+                      style={{
+                        borderColor:
+                          actionType === 'REJECT'
+                            ? '#fecdd3'
+                            : actionType === 'REOPEN'
+                              ? '#fde68a'
+                              : '#bfdbfe',
+                      }}
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-slate-800">
-                          {actionType === 'REJECT' ? 'Specify Reason for Rejection:' : 'Revision Feedback / Discussion Notes:'}
+                          {actionType === 'REJECT'
+                            ? 'Specify Reason for Revocation & Rejection:'
+                            : actionType === 'REOPEN'
+                              ? 'Specify Audit Notes for Re-opening Review (Will be sent to HOD):'
+                              : 'Revision Feedback / Discussion Notes:'}
                         </span>
                         <button
                           onClick={() => { setActionType(null); setActionComment(''); }}
@@ -634,11 +645,17 @@ export default function AdminApprovals() {
                         rows={2}
                         value={actionComment}
                         onChange={e => setActionComment(e.target.value)}
-                        placeholder={actionType === 'REJECT' ? 'e.g. Document incomplete or does not meet criteria…' : 'e.g. Please clarify publication tier or upload proof page…'}
+                        placeholder={
+                          actionType === 'REJECT'
+                            ? 'e.g. Discrepancy in publication indexing or duplicate record…'
+                            : actionType === 'REOPEN'
+                              ? 'e.g. Please verify author affiliation and proof document with faculty…'
+                              : 'e.g. Please clarify publication tier or upload proof page…'
+                        }
                         className="w-full p-2.5 bg-white border rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500 text-slate-800"
                         style={{ borderColor: '#e2e8f0' }}
                       />
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-2">
                         {actionType === 'REJECT' ? (
                           <button
                             disabled={acting}
@@ -646,7 +663,16 @@ export default function AdminApprovals() {
                             className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                           >
                             <XCircle className="w-3.5 h-3.5" />
-                            <span>{acting ? 'Rejecting…' : 'Confirm Rejection'}</span>
+                            <span>{acting ? 'Revoking…' : 'Confirm Revoke & Reject'}</span>
+                          </button>
+                        ) : actionType === 'REOPEN' ? (
+                          <button
+                            disabled={acting}
+                            onClick={() => handleDecision(selected._id, 'REOPEN')}
+                            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          >
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>{acting ? 'Routing…' : 'Send to HOD for Re-Review'}</span>
                           </button>
                         ) : (
                           <button
@@ -666,17 +692,17 @@ export default function AdminApprovals() {
                 {/* Bottom Decision Footer */}
                 {!actionType && (() => {
                   const isRejected = ['ADMIN_REJECTED', 'HOD_REJECTED', 'REJECTED'].includes(selected.status);
-                  const isApproved = selected.status === 'ADMIN_APPROVED';
+                  const isApproved = ['APPROVED', 'ADMIN_APPROVED', 'HOD_APPROVED'].includes(selected.status);
                   const isPending = !isRejected && !isApproved;
 
                   return (
                     <div className="flex items-center justify-between pt-1">
                       <div className="text-xs text-slate-400">
                         {isPending
-                          ? 'Awaiting Institutional Review'
+                          ? 'Awaiting Departmental / Institutional Review'
                           : isRejected
                             ? 'Status: Rejected by Authority'
-                            : 'Status: Approved & Credits Awarded'}
+                            : 'Status: Approved & Credits Finalized'}
                       </div>
 
                       <div className="flex items-center gap-2.5">
@@ -733,16 +759,25 @@ export default function AdminApprovals() {
                           </>
                         )}
 
-                        {/* APPROVED ACTIONS */}
+                        {/* APPROVED ACTIONS - RE-OPEN REVIEW & REVOKE & REJECT */}
                         {isApproved && (
-                          <button
-                            disabled={acting}
-                            onClick={() => handleDecision(selected._id, 'REOPEN')}
-                            className="flex items-center gap-1.5 px-3.5 py-2 border rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border-slate-300 transition-colors cursor-pointer disabled:opacity-50"
-                          >
-                            <Clock className="w-3.5 h-3.5 text-slate-600" />
-                            <span>Re-open Review</span>
-                          </button>
+                          <>
+                            <button
+                              onClick={() => { setActionType('REOPEN'); setActionComment(''); }}
+                              className="flex items-center gap-1.5 px-3.5 py-2 border rounded-xl text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border-amber-300 transition-colors cursor-pointer"
+                            >
+                              <Clock className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Re-open Review</span>
+                            </button>
+
+                            <button
+                              onClick={() => { setActionType('REJECT'); setActionComment(''); }}
+                              className="flex items-center gap-1.5 px-3.5 py-2 border rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border-rose-200 transition-colors cursor-pointer"
+                            >
+                              <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                              <span>Revoke & Reject</span>
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>

@@ -11,12 +11,13 @@ import { facultyApi } from '../../api/services';
 import { emitRealtimeEvent, subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
 
 const STATUS_STYLES = {
-  ADMIN_APPROVED:   { color: '#065f46', bg: '#d1fae5', border: '#a7f3d0', label: 'Accepted (Credits Awarded)' },
-  HOD_APPROVED:     { color: '#1e40af', bg: '#dbeafe', border: '#bfdbfe', label: 'Approved by HOD · In Admin Review' },
-  APPROVED:         { color: '#065f46', bg: '#d1fae5', border: '#a7f3d0', label: 'Accepted' },
+  ADMIN_APPROVED:   { color: '#065f46', bg: '#d1fae5', border: '#a7f3d0', label: 'Approved (Credits Awarded)' },
+  HOD_APPROVED:     { color: '#065f46', bg: '#d1fae5', border: '#a7f3d0', label: 'Approved (Credits Awarded)' },
+  APPROVED:         { color: '#065f46', bg: '#d1fae5', border: '#a7f3d0', label: 'Approved (Credits Awarded)' },
   FACULTY_SUBMITTED:{ color: '#92400e', bg: '#fef3c7', border: '#fde68a', label: 'Under Review by HOD' },
-  HOD_SUBMITTED:    { color: '#1e40af', bg: '#dbeafe', border: '#bfdbfe', label: 'Pending Institutional Review' },
+  HOD_SUBMITTED:    { color: '#065f46', bg: '#d1fae5', border: '#a7f3d0', label: 'Approved (Credits Awarded)' },
   PENDING:          { color: '#92400e', bg: '#fef3c7', border: '#fde68a', label: 'Pending Review' },
+  REOPENED_FOR_HOD: { color: '#92400e', bg: '#fef3c7', border: '#fde68a', label: 'In Departmental Re-Review' },
   NEEDS_REVISION:   { color: '#c2410c', bg: '#ffedd5', border: '#fed7aa', label: 'Needs Revision' },
   DISCUSSION:       { color: '#c2410c', bg: '#ffedd5', border: '#fed7aa', label: 'Discussion Requested' },
   ADMIN_REJECTED:   { color: '#991b1b', bg: '#fee2e2', border: '#fca5a5', label: 'Rejected by Admin' },

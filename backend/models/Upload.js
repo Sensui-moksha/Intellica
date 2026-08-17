@@ -63,9 +63,12 @@ const uploadSchema = new mongoose.Schema(
     type: String,
     enum: [
       "FACULTY_SUBMITTED",
+      "PENDING",
       "HOD_COMMENT",
       "HOD_APPROVED",
       "HOD_SUBMITTED",
+      "APPROVED",
+      "REOPENED_FOR_HOD",
       "ADMIN_COMMENT",
       "ADMIN_APPROVED",
       "ADMIN_REJECTED",

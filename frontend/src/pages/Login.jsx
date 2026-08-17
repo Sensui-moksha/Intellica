@@ -371,7 +371,7 @@ export default function Login() {
             <img src={micLogo} alt="DVR & Dr. HS MIC College of Technology" className="w-full h-auto max-h-16 object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Intellica</h1>
-          <p className="text-xs font-medium text-slate-500 mt-0.5">Faculty Research Management System</p>
+          <p className="text-xs font-medium text-slate-500 mt-0.5">Faculty Research Insights Portal</p>
         </div>
 
         {/* Global Notifications & Alerts */}
