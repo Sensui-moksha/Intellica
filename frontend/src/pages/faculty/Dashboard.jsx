@@ -4,7 +4,7 @@ import {
   Target, Sparkles, AlertCircle, CheckCircle2,
   BookOpen, FileText, Send, Clock, ArrowRight,
   Calendar, Trophy, Award, Bookmark, ExternalLink,
-  Building2, Shield, MapPin
+  Building2, Shield, MapPin, Users, TrendingUp, BarChart2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { facultyApi, rankingApi, authApi, activityApi } from '../../api/services';
@@ -17,25 +17,28 @@ const getGreeting = () => {
   const hour = new Date().getHours();
   if (hour >= 4 && hour < 12) return { salutation: 'Good morning', icon: '☀️', message: 'Ready to submit research and achieve your academic milestones today?' };
   if (hour >= 12 && hour < 17) return { salutation: 'Good afternoon', icon: '☀️', message: 'Here is your real-time academic standing & credit target.' };
-  return { salutation: 'Good evening', icon: '🌙', message: 'Review today\'s approved credits and upcoming department milestones.' };
+  if (hour >= 17 && hour < 22) return { salutation: 'Good evening', icon: '🌙', message: 'Review today\'s approved credits and upcoming department milestones.' };
+  return { salutation: 'Good night', icon: '🌙', message: 'Academic credit and faculty research portal.' };
 };
 
 export default function FacultyDashboard() {
   const [profile, setProfile]       = useState(null);
   const [uploads, setUploads]       = useState([]);
   const [rank, setRank]             = useState(null);
+  const [rankings, setRankings]     = useState([]);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading]       = useState(true);
 
   const fetchAll = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
-      const [profileRes, uploadsRes, rankRes, meRes, actRes] = await Promise.all([
+      const [profileRes, uploadsRes, rankRes, meRes, actRes, rankingsRes] = await Promise.all([
         facultyApi.getProfile().catch(() => null),
         facultyApi.getMyUploads().catch(() => ({ data: [] })),
         rankingApi.getMyRank().catch(() => ({ data: null })),
         authApi.getMe().catch(() => null),
-        activityApi.getActivities().catch(() => ({ data: { activities: [] } }))
+        activityApi.getActivities().catch(() => ({ data: { activities: [] } })),
+        rankingApi.getRankings().catch(() => ({ data: [] }))
       ]);
       const mergedProfile = {
         ...(profileRes?.data || {}),
@@ -48,6 +51,8 @@ export default function FacultyDashboard() {
       const uList = Array.isArray(uploadsRes?.data) ? uploadsRes.data : uploadsRes?.data?.uploads || [];
       setUploads(uList);
       setRank(rankRes?.data);
+      const rankList = Array.isArray(rankingsRes?.data) ? rankingsRes.data : rankingsRes?.data?.rankings || [];
+      setRankings(rankList);
       const actList = actRes?.data?.activities || actRes?.data || [];
       setActivities(actList);
     } catch (err) {
@@ -84,7 +89,7 @@ export default function FacultyDashboard() {
   const approvedUploads = uploads.filter(
     u => u.status === 'ADMIN_APPROVED' || u.status === 'HOD_APPROVED' || u.status === 'APPROVED'
   );
-  const myEarnedCredits = approvedUploads.reduce((sum, u) => sum + (Number(u.credits) || 0), 0) || (profile?.totalCredits || 0);
+  const myApprovedCredits = approvedUploads.reduce((sum, u) => sum + (Number(u.credits) || 0), 0);
 
   const pendingCount = uploads.filter(
     u => u.status === 'FACULTY_SUBMITTED' || u.status === 'HOD_SUBMITTED' || u.status === 'PENDING'
@@ -94,14 +99,66 @@ export default function FacultyDashboard() {
     u => u.status === 'NEEDS_REVISION' || u.status === 'ADMIN_COMMENT' || u.status === 'HOD_COMMENT'
   ).length;
 
-  const creditTarget = 200;
-  const progressPercent = Math.min(Math.round((myEarnedCredits / creditTarget) * 100), 100);
-
+  const facultyDept = (profile?.department || localStorage.getItem('department') || 'CSE').toUpperCase();
   const displayName = profile?.name || localStorage.getItem('userName') || 'Faculty';
   const userInitial = (displayName || 'F').charAt(0).toUpperCase();
   const profileImg = profile?.profileImage || localStorage.getItem('profileImage');
   const profileImgUrl = resolveProfileImageUrl(profileImg);
   const greeting = getGreeting();
+
+  // 1. My Personal Earned Credits
+  const myMemberData = rankings.find(
+    r => r.facultyId === profile?._id ||
+         (r.name?.toLowerCase() === displayName.toLowerCase() && (r.department || '').toUpperCase() === facultyDept)
+  );
+  const myEarnedCredits = myMemberData?.totalCredits || myApprovedCredits || profile?.totalCredits || 0;
+
+  // 2. Department Members & Standings within Faculty Department
+  const deptMembers = rankings.filter(
+    r => (r.department || '').toUpperCase() === facultyDept
+  );
+
+  // Ensure logged-in faculty is included in deptMembers
+  if (profile && !deptMembers.some(m => m.facultyId === profile._id || (m.name?.toLowerCase() === displayName.toLowerCase() && (m.department || '').toUpperCase() === facultyDept))) {
+    deptMembers.push({
+      facultyId: profile._id,
+      name: displayName,
+      department: facultyDept,
+      designation: profile.designation || 'Faculty Member',
+      createdByRole: 'FACULTY',
+      totalCredits: myEarnedCredits
+    });
+  }
+
+  const deptTotalCredits = deptMembers.reduce((sum, m) => sum + (Number(m.totalCredits) || 0), 0);
+
+  // 3. College Department Rankings Map
+  const deptAggMap = {};
+  rankings.forEach(r => {
+    const d = (r.department || 'Unknown').toUpperCase();
+    if (!deptAggMap[d]) deptAggMap[d] = { department: d, totalCredits: 0, count: 0 };
+    deptAggMap[d].totalCredits += (Number(r.totalCredits) || 0);
+    deptAggMap[d].count += 1;
+  });
+
+  if (facultyDept && !deptAggMap[facultyDept]) {
+    deptAggMap[facultyDept] = { department: facultyDept, totalCredits: deptTotalCredits, count: deptMembers.length };
+  } else if (facultyDept) {
+    deptAggMap[facultyDept].totalCredits = Math.max(deptAggMap[facultyDept].totalCredits, deptTotalCredits);
+  }
+
+  const collegeDeptRankings = Object.values(deptAggMap).sort((a, b) => b.totalCredits - a.totalCredits);
+  const maxRankCredits = collegeDeptRankings[0]?.totalCredits || 1;
+  const myDeptRankIndex = collegeDeptRankings.findIndex(d => d.department === facultyDept);
+  const deptRankDisplay = myDeptRankIndex >= 0 ? `#${myDeptRankIndex + 1}` : '#1';
+
+  // 4. Sorted Department Members (Highlight Neil / Current Faculty)
+  const sortedDeptMembers = [...deptMembers]
+    .sort((a, b) => (b.totalCredits || 0) - (a.totalCredits || 0));
+  const myFacultyRankIndex = sortedDeptMembers.findIndex(
+    m => m.facultyId === profile?._id || m.name?.toLowerCase() === displayName.toLowerCase()
+  );
+  const facultyRankDisplay = myFacultyRankIndex >= 0 ? `#${myFacultyRankIndex + 1}` : (rank?.departmentRank ? `#${rank.departmentRank}` : '#1');
 
   const displayActivities = activities.slice(0, 3);
 
@@ -125,7 +182,6 @@ export default function FacultyDashboard() {
         variants={itemVariants}
         className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#070f23] via-[#0e1d45] to-[#142e6b] text-white p-6 sm:p-8 shadow-2xl border border-indigo-900/30"
       >
-        {/* Full Panoramic DVR & Dr. HS MIC College of Technology Building */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
           <img
             src="/college-campus.png"
@@ -136,11 +192,8 @@ export default function FacultyDashboard() {
               WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.05) 15%, rgba(0, 0, 0, 0.5) 45%, rgba(0, 0, 0, 0.95) 85%)',
             }}
           />
-          {/* Seamless Deep Indigo & Sapphire Gradient Wash */}
           <div className="absolute inset-0 bg-gradient-to-r from-[#070f23] via-[#0e1d45]/60 to-[#142e6b]/25" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#070f23]/60 via-transparent to-[#070f23]/25" />
-
-          {/* Concentric Subtle Radar Rings */}
           <div className="absolute -right-16 -bottom-16 w-80 h-80 rounded-full border border-white/5 pointer-events-none" />
           <div className="absolute -right-36 -bottom-36 w-120 h-120 rounded-full border border-white/5 pointer-events-none" />
         </div>
@@ -182,7 +235,7 @@ export default function FacultyDashboard() {
               </div>
 
               <p className="text-xs text-slate-300 font-medium pt-0.5">
-                Department of {profile?.department || 'CSE'} • Academic Year {new Date().getFullYear()}
+                Department of {facultyDept} • Academic Year {new Date().getFullYear()}
               </p>
             </div>
           </div>
@@ -238,9 +291,9 @@ export default function FacultyDashboard() {
           },
           {
             label: 'Department Rank',
-            value: rank?.departmentRank ? `#${rank.departmentRank}` : '#1',
-            unit: `of ${rank?.departmentTotal || 1}`,
-            subtext: 'Institutional Standing',
+            value: facultyRankDisplay,
+            unit: `of ${sortedDeptMembers.length || 1}`,
+            subtext: `Faculty in ${facultyDept}`,
             icon: Trophy,
             color: '#059669',
             bg: '#d1fae5'
@@ -258,7 +311,7 @@ export default function FacultyDashboard() {
             label: 'Pending Reviews',
             value: pendingCount.toString(),
             unit: 'in pipeline',
-            subtext: 'Requires HOD Review',
+            subtext: 'Requires Review',
             icon: Clock,
             color: '#d97706',
             bg: '#fef3c7'
@@ -288,37 +341,168 @@ export default function FacultyDashboard() {
         ))}
       </div>
 
-      {/* Credit Progress Target */}
-      <motion.div
-        variants={itemVariants}
-        className="bg-white rounded-3xl p-6 border shadow-xs space-y-4"
-        style={{ borderColor: '#e8edf5' }}
-      >
-        <div className="flex items-center justify-between">
+      {/* ── 🌟 REAL-TIME LEADERBOARDS (MATCHING HOD DASHBOARD) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Left: College Department Rankings */}
+        <motion.div
+          variants={itemVariants}
+          className="bg-white rounded-3xl p-6 border shadow-xs flex flex-col justify-between"
+          style={{ borderColor: '#e8edf5' }}
+        >
           <div>
-            <h3 className="text-sm font-black text-slate-900">Annual Research Milestone Target</h3>
-            <p className="text-[11px] text-slate-400">Institutional baseline target: {creditTarget} Credits</p>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-black text-slate-900">College Department Rankings</h3>
+                <p className="text-[11px] text-slate-400">Institutional credit standings across departments</p>
+              </div>
+              <span className="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-xl border border-blue-200/60">
+                {collegeDeptRankings.length} Departments
+              </span>
+            </div>
+
+            <div className="space-y-3.5">
+              {collegeDeptRankings.map((dept, i) => {
+                const isMyDept = dept.department === facultyDept;
+                const topDeptScore = maxRankCredits;
+                const currentScore = dept.totalCredits;
+                const percentage = topDeptScore > 0 ? Math.round((currentScore / topDeptScore) * 100) : 0;
+
+                return (
+                  <div key={dept.department} className="space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-black text-xs px-2 py-0.5 rounded-lg ${
+                          i === 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          #{i + 1}
+                        </span>
+                        <span className={`font-bold ${isMyDept ? 'text-blue-600 font-black' : 'text-slate-700'}`}>
+                          {dept.department}
+                        </span>
+                        {isMyDept && (
+                          <span className="text-[10px] bg-blue-600 text-white font-black px-2 py-0.5 rounded-full shadow-2xs">
+                            Your Department
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-slate-900 font-black">
+                          {i === 0
+                            ? currentScore.toLocaleString()
+                            : (topDeptScore > 0 ? `${currentScore.toLocaleString()} / ${topDeptScore.toLocaleString()}` : `${currentScore.toLocaleString()} / 0`)}
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-400">pts</span>
+                      </div>
+                    </div>
+
+                    <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden p-0.5">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.max(percentage, currentScore > 0 ? 4 : 0)}%` }}
+                        transition={{ type: 'spring', stiffness: 50, damping: 14, delay: 0.1 + i * 0.05 }}
+                        className={`h-full rounded-full ${
+                          isMyDept
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-xs'
+                            : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <span className="text-xs font-black text-blue-700 bg-blue-50 px-3 py-1 rounded-xl border border-blue-200/60">
-            {progressPercent}% Completed
-          </span>
-        </div>
 
-        <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${progressPercent}%` }}
-            transition={{ type: 'spring', stiffness: 50, damping: 14, delay: 0.2 }}
-            className="h-full rounded-full"
-            style={{ background: 'linear-gradient(90deg, #2563eb, #7c3aed)' }}
-          />
-        </div>
+          <div className="pt-4 mt-4 border-t border-slate-100 text-center">
+            <Link
+              to="/faculty/reports"
+              className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              <span>View All Rankings</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </motion.div>
 
-        <div className="flex justify-between text-xs text-slate-500 font-semibold pt-1">
-          <span>{myEarnedCredits} points secured</span>
-          <span>{Math.max(0, creditTarget - myEarnedCredits)} points remaining to reach annual goal</span>
-        </div>
-      </motion.div>
+        {/* Right: Department Faculty & HOD Standing */}
+        <motion.div
+          variants={itemVariants}
+          className="bg-white rounded-3xl p-6 border shadow-xs flex flex-col justify-between"
+          style={{ borderColor: '#e8edf5' }}
+        >
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-black text-slate-900">Department Faculty & HOD Standing</h3>
+                <p className="text-[11px] text-slate-400">Research points earned within {facultyDept}</p>
+              </div>
+              <Trophy className="w-4 h-4 text-amber-500" />
+            </div>
+
+            <div className="space-y-2">
+              {sortedDeptMembers.map((f, i) => {
+                const isMe = f.facultyId === profile?._id || f.name?.toLowerCase() === displayName.toLowerCase();
+                const isHOD = f.createdByRole === 'HOD' || f.designation?.includes('HOD');
+                return (
+                  <div
+                    key={f.facultyId || i}
+                    className={`flex items-center justify-between p-2.5 rounded-2xl border transition-colors ${
+                      isMe
+                        ? 'bg-blue-50/50 border-blue-200/80'
+                        : 'hover:bg-slate-50 border-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-xs font-black text-slate-400 w-4 text-center">
+                        #{i + 1}
+                      </span>
+                      <div className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs ${
+                        isMe ? 'bg-blue-600 text-white' : isHOD ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {f.name?.charAt(0) || 'F'}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-slate-900">{f.name}</p>
+                          {isMe && (
+                            <span className="text-[9px] bg-blue-600 text-white font-black px-1.5 py-0.2 rounded-md">
+                              You
+                            </span>
+                          )}
+                          {isHOD && !isMe && (
+                            <span className="text-[9px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.2 rounded-md border border-indigo-200">
+                              HOD
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400">{f.designation || 'Faculty Member'}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-black text-slate-900">
+                      {(f.totalCredits || 0).toLocaleString()} pts
+                    </span>
+                  </div>
+                );
+              })}
+
+              {sortedDeptMembers.length === 0 && (
+                <p className="text-xs text-slate-400 py-6 text-center">No member research data yet.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="pt-4 mt-4 border-t border-slate-100 text-center">
+            <Link
+              to="/faculty/reports"
+              className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              <span>View Full Leaderboard</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </motion.div>
+      </div>
 
       {/* ── 🌟 UPCOMING DEPARTMENT ACTIVITIES (PLANNED BY HOD) ── */}
       <motion.div
