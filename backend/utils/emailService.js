@@ -39,9 +39,10 @@ const getLogoSrc = () => {
 
 const sendMail = async (mailOptions) => {
   try {
-    // Direct all outgoing emails to mokshyagnay@gmail.com
-    const targetRecipient = process.env.EMAIL_OVERRIDE_TO || 'mokshyagnay@gmail.com';
-    mailOptions.to = targetRecipient;
+    // If EMAIL_OVERRIDE_TO is set, use it; otherwise send to the actual recipient (mailOptions.to)
+    if (process.env.EMAIL_OVERRIDE_TO) {
+      mailOptions.to = process.env.EMAIL_OVERRIDE_TO;
+    }
 
     // Ensure zero attachments so Gmail doesn't show an attachment chip in the inbox thread list
     mailOptions.attachments = [];
