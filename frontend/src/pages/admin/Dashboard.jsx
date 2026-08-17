@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
   Award, Users, BarChart2, AlertCircle, Loader2,
   ShieldCheck, ArrowRight, Crown, Building2, Calendar,
-  Trophy, Clock, Bookmark, ExternalLink
+  Trophy, Clock, Bookmark, ExternalLink, Shield, MapPin
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { adminApi, rankingApi, authApi, activityApi } from '../../api/services';
@@ -413,29 +413,68 @@ export default function AdminDashboard() {
         {displayActivities.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {displayActivities.map((act, i) => {
+              const isAdminActivity = act.createdByRole === 'ADMIN' || act.targetAudience === 'ALL_HODS';
               const hasLink = act.link || (act.venue && (act.venue.startsWith('http') || act.venue.includes('meet.google.com') || act.venue.includes('zoom.us')));
               const targetUrl = act.link || (hasLink ? (act.venue.startsWith('http') ? act.venue : `https://${act.venue}`) : null);
+              const formattedDate = act.date ? new Date(act.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
 
               return (
                 <div
                   key={act._id || i}
-                  className="p-4 rounded-2xl border border-slate-200/80 hover:border-blue-300 hover:shadow-sm transition-all bg-white flex flex-col justify-between group"
+                  className={`p-4 rounded-2xl border transition-all flex flex-col justify-between group shadow-2xs ${
+                    isAdminActivity
+                      ? 'border-l-4 border-l-purple-600 border-slate-200/90 bg-gradient-to-br from-purple-50/40 via-white to-indigo-50/20 hover:border-purple-300'
+                      : 'border-l-4 border-l-blue-600 border-slate-200/90 bg-gradient-to-br from-blue-50/40 via-white to-slate-50/30 hover:border-blue-300'
+                  }`}
                 >
-                  <Link to="/admin/calendar" className="block">
-                    <h4 className="text-xs font-black text-slate-900 group-hover:text-blue-600 transition-colors">
-                      {act.title}
-                    </h4>
-                    {act.description && (
-                      <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                        {act.description}
-                      </p>
-                    )}
-                  </Link>
+                  <div className="space-y-2">
+                    {/* Top Organizer & Audience Badges */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {isAdminActivity ? (
+                        <>
+                          <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-purple-600 text-white flex items-center gap-1 shadow-2xs">
+                            <Shield className="w-2.5 h-2.5" /> Institutional
+                          </span>
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/80">
+                            👑 Principal / Admin (All HODs)
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-blue-600 text-white flex items-center gap-1 shadow-2xs">
+                            <Building2 className="w-2.5 h-2.5" /> Dept Internal
+                          </span>
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                            👔 By HOD ({act.department || 'Dept'} Faculty)
+                          </span>
+                        </>
+                      )}
+                    </div>
 
-                  <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px] font-bold text-slate-500">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{act.time || '10:00 AM'}</span>
+                    <Link to="/admin/calendar" className="block">
+                      <h4 className="text-xs font-black text-slate-900 group-hover:text-blue-600 transition-colors">
+                        {act.title}
+                      </h4>
+                      {act.description && (
+                        <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                          {act.description}
+                        </p>
+                      )}
+                    </Link>
+                  </div>
+
+                  <div className="mt-3 pt-2 border-t border-slate-100/90 flex items-center justify-between gap-2 text-[10px] font-bold text-slate-500">
+                    <div className="flex items-center gap-2 truncate">
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{formattedDate ? `${formattedDate} · ` : ''}{act.time || '10:00 AM'}</span>
+                      </div>
+                      {act.venue && !hasLink && (
+                        <div className="flex items-center gap-1 truncate text-slate-400">
+                          <MapPin className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{act.venue}</span>
+                        </div>
+                      )}
                     </div>
 
                     {hasLink && (
@@ -443,7 +482,7 @@ export default function AdminDashboard() {
                         href={targetUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-800 font-bold px-2 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
+                        className="inline-flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-800 font-bold px-2.5 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors shrink-0"
                       >
                         <ExternalLink className="w-3 h-3" />
                         <span>Join</span>
