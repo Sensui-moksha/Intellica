@@ -77,7 +77,6 @@ function App() {
           <Route path="dashboard" element={<FacultyDashboard />} />
           <Route path="upload" element={<FacultyUpload />} />
           <Route path="my-activities" element={<FacultyMyActivities />} />
-          <Route path="reports" element={<ReportsAndAnalytics />} />
           <Route path="calendar" element={<DepartmentCalendar />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />

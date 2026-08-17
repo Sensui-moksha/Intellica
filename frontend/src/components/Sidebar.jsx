@@ -60,7 +60,6 @@ export default function Sidebar({ role }) {
     FACULTY: [
       { name: 'Dashboard', path: '/faculty/dashboard', icon: LayoutGrid },
       { name: 'My Activities', path: '/faculty/my-activities', icon: ListOrdered },
-      { name: 'Reports & Analytics', path: '/faculty/reports', icon: BarChart3 },
       { name: 'Calendar', path: '/faculty/calendar', icon: Calendar },
       { name: 'Settings', path: '/faculty/settings', icon: Settings },
     ],

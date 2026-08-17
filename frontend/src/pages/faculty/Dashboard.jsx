@@ -130,37 +130,20 @@ export default function FacultyDashboard() {
     });
   }
 
-  const deptTotalCredits = deptMembers.reduce((sum, m) => sum + (Number(m.totalCredits) || 0), 0);
-
-  // 3. College Department Rankings Map
-  const deptAggMap = {};
-  rankings.forEach(r => {
-    const d = (r.department || 'Unknown').toUpperCase();
-    if (!deptAggMap[d]) deptAggMap[d] = { department: d, totalCredits: 0, count: 0 };
-    deptAggMap[d].totalCredits += (Number(r.totalCredits) || 0);
-    deptAggMap[d].count += 1;
-  });
-
-  if (facultyDept && !deptAggMap[facultyDept]) {
-    deptAggMap[facultyDept] = { department: facultyDept, totalCredits: deptTotalCredits, count: deptMembers.length };
-  } else if (facultyDept) {
-    deptAggMap[facultyDept].totalCredits = Math.max(deptAggMap[facultyDept].totalCredits, deptTotalCredits);
-  }
-
-  const collegeDeptRankings = Object.values(deptAggMap).sort((a, b) => b.totalCredits - a.totalCredits);
-  const maxRankCredits = collegeDeptRankings[0]?.totalCredits || 1;
-  const myDeptRankIndex = collegeDeptRankings.findIndex(d => d.department === facultyDept);
-  const deptRankDisplay = myDeptRankIndex >= 0 ? `#${myDeptRankIndex + 1}` : '#1';
-
-  // 4. Sorted Department Members (Highlight Neil / Current Faculty)
+  // 3. Sorted Department Members (Highlight Neil / Current Faculty)
   const sortedDeptMembers = [...deptMembers]
     .sort((a, b) => (b.totalCredits || 0) - (a.totalCredits || 0));
   const myFacultyRankIndex = sortedDeptMembers.findIndex(
     m => m.facultyId === profile?._id || m.name?.toLowerCase() === displayName.toLowerCase()
   );
-  const facultyRankDisplay = myFacultyRankIndex >= 0 ? `#${myFacultyRankIndex + 1}` : (rank?.departmentRank ? `#${rank.departmentRank}` : '#1');
+  const myFacultyRank = myFacultyRankIndex >= 0 ? myFacultyRankIndex + 1 : 1;
+  const totalDeptMembers = sortedDeptMembers.length || 1;
+  const rankDisplay = `${myFacultyRank}/${totalDeptMembers}`;
 
-  const displayActivities = activities.slice(0, 3);
+  const top6DeptMembers = sortedDeptMembers.slice(0, 6);
+  const isMyRankOutsideTop6 = myFacultyRankIndex >= 6;
+
+  const displayActivities = activities.slice(0, 4);
 
   const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
   const itemVariants = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
@@ -177,7 +160,6 @@ export default function FacultyDashboard() {
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="max-w-6xl mx-auto space-y-6 pb-12">
       
-      {/* ── 🌟 HERO BANNER (ULTRA-SEAMLESS INTEGRATION) ── */}
       <motion.div
         variants={itemVariants}
         className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#070f23] via-[#0e1d45] to-[#142e6b] text-white p-6 sm:p-8 shadow-2xl border border-indigo-900/30"
@@ -259,7 +241,6 @@ export default function FacultyDashboard() {
         </div>
       </motion.div>
 
-      {/* Revision Alert if needed */}
       {revisionCount > 0 && (
         <motion.div variants={itemVariants}>
           <Link
@@ -277,7 +258,6 @@ export default function FacultyDashboard() {
         </motion.div>
       )}
 
-      {/* 4 Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           {
@@ -291,9 +271,9 @@ export default function FacultyDashboard() {
           },
           {
             label: 'Department Rank',
-            value: facultyRankDisplay,
-            unit: `of ${sortedDeptMembers.length || 1}`,
-            subtext: `Faculty in ${facultyDept}`,
+            value: rankDisplay,
+            unit: 'Rank',
+            subtext: `Standing in ${facultyDept}`,
             icon: Trophy,
             color: '#059669',
             bg: '#d1fae5'
@@ -341,107 +321,29 @@ export default function FacultyDashboard() {
         ))}
       </div>
 
-      {/* ── 🌟 REAL-TIME LEADERBOARDS (MATCHING HOD DASHBOARD) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Left: College Department Rankings */}
         <motion.div
           variants={itemVariants}
           className="bg-white rounded-3xl p-6 border shadow-xs flex flex-col justify-between"
           style={{ borderColor: '#e8edf5' }}
         >
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-black text-slate-900">College Department Rankings</h3>
-                <p className="text-[11px] text-slate-400">Institutional credit standings across departments</p>
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-amber-500" />
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">Department Faculty & HOD Standing</h3>
+                  <p className="text-[11px] text-slate-400">Research points earned within {facultyDept} (Top 6)</p>
+                </div>
               </div>
-              <span className="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-xl border border-blue-200/60">
-                {collegeDeptRankings.length} Departments
+              <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-xl border border-blue-200/60">
+                {totalDeptMembers} Members
               </span>
             </div>
 
-            <div className="space-y-3.5">
-              {collegeDeptRankings.map((dept, i) => {
-                const isMyDept = dept.department === facultyDept;
-                const topDeptScore = maxRankCredits;
-                const currentScore = dept.totalCredits;
-                const percentage = topDeptScore > 0 ? Math.round((currentScore / topDeptScore) * 100) : 0;
-
-                return (
-                  <div key={dept.department} className="space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className={`font-black text-xs px-2 py-0.5 rounded-lg ${
-                          i === 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          #{i + 1}
-                        </span>
-                        <span className={`font-bold ${isMyDept ? 'text-blue-600 font-black' : 'text-slate-700'}`}>
-                          {dept.department}
-                        </span>
-                        {isMyDept && (
-                          <span className="text-[10px] bg-blue-600 text-white font-black px-2 py-0.5 rounded-full shadow-2xs">
-                            Your Department
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-slate-900 font-black">
-                          {i === 0
-                            ? currentScore.toLocaleString()
-                            : (topDeptScore > 0 ? `${currentScore.toLocaleString()} / ${topDeptScore.toLocaleString()}` : `${currentScore.toLocaleString()} / 0`)}
-                        </span>
-                        <span className="text-[11px] font-bold text-slate-400">pts</span>
-                      </div>
-                    </div>
-
-                    <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden p-0.5">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.max(percentage, currentScore > 0 ? 4 : 0)}%` }}
-                        transition={{ type: 'spring', stiffness: 50, damping: 14, delay: 0.1 + i * 0.05 }}
-                        className={`h-full rounded-full ${
-                          isMyDept
-                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-xs'
-                            : 'bg-gradient-to-r from-blue-500 to-indigo-500'
-                        }`}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="pt-4 mt-4 border-t border-slate-100 text-center">
-            <Link
-              to="/faculty/reports"
-              className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
-            >
-              <span>View All Rankings</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </motion.div>
-
-        {/* Right: Department Faculty & HOD Standing */}
-        <motion.div
-          variants={itemVariants}
-          className="bg-white rounded-3xl p-6 border shadow-xs flex flex-col justify-between"
-          style={{ borderColor: '#e8edf5' }}
-        >
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-black text-slate-900">Department Faculty & HOD Standing</h3>
-                <p className="text-[11px] text-slate-400">Research points earned within {facultyDept}</p>
-              </div>
-              <Trophy className="w-4 h-4 text-amber-500" />
-            </div>
-
             <div className="space-y-2">
-              {sortedDeptMembers.map((f, i) => {
+              {top6DeptMembers.map((f, i) => {
                 const isMe = f.facultyId === profile?._id || f.name?.toLowerCase() === displayName.toLowerCase();
                 const isHOD = f.createdByRole === 'HOD' || f.designation?.includes('HOD');
                 return (
@@ -449,12 +351,14 @@ export default function FacultyDashboard() {
                     key={f.facultyId || i}
                     className={`flex items-center justify-between p-2.5 rounded-2xl border transition-colors ${
                       isMe
-                        ? 'bg-blue-50/50 border-blue-200/80'
+                        ? 'bg-blue-50/70 border-blue-300/80 shadow-2xs'
                         : 'hover:bg-slate-50 border-slate-100'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="text-xs font-black text-slate-400 w-4 text-center">
+                      <span className={`text-xs font-black w-5 text-center ${
+                        i === 0 ? 'text-amber-500 font-black' : i === 1 ? 'text-slate-500 font-black' : i === 2 ? 'text-amber-700 font-black' : 'text-slate-400'
+                      }`}>
                         #{i + 1}
                       </span>
                       <div className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs ${
@@ -464,7 +368,7 @@ export default function FacultyDashboard() {
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-bold text-slate-900">{f.name}</p>
+                          <p className={`text-xs font-bold ${isMe ? 'text-blue-950 font-black' : 'text-slate-900'}`}>{f.name}</p>
                           {isMe && (
                             <span className="text-[9px] bg-blue-600 text-white font-black px-1.5 py-0.2 rounded-md">
                               You
@@ -486,135 +390,156 @@ export default function FacultyDashboard() {
                 );
               })}
 
+              {isMyRankOutsideTop6 && (
+                <>
+                  <div className="py-1 text-center text-[10px] text-slate-400 font-bold tracking-widest">• • •</div>
+                  <div className="flex items-center justify-between p-2.5 rounded-2xl border bg-blue-50/70 border-blue-300/80 shadow-2xs">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-xs font-black text-blue-600 w-5 text-center">
+                        #{myFacultyRank}
+                      </span>
+                      <div className="w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs bg-blue-600 text-white">
+                        {displayName?.charAt(0) || 'F'}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-black text-blue-950">{displayName}</p>
+                          <span className="text-[9px] bg-blue-600 text-white font-black px-1.5 py-0.2 rounded-md">
+                            You
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400">{profile?.designation || 'Faculty Member'}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-black text-slate-900">
+                      {myEarnedCredits.toLocaleString()} pts
+                    </span>
+                  </div>
+                </>
+              )}
+
               {sortedDeptMembers.length === 0 && (
                 <p className="text-xs text-slate-400 py-6 text-center">No member research data yet.</p>
               )}
             </div>
           </div>
+        </motion.div>
 
-          <div className="pt-4 mt-4 border-t border-slate-100 text-center">
-            <Link
-              to="/faculty/reports"
-              className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
-            >
-              <span>View Full Leaderboard</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+        {/* Right: Upcoming Department Activities (Planned by HOD) */}
+        <motion.div
+          variants={itemVariants}
+          className="bg-white rounded-3xl p-6 border shadow-xs space-y-4 flex flex-col justify-between"
+          style={{ borderColor: '#e8edf5' }}
+        >
+          <div>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-blue-600" />
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">Upcoming Department Activities</h3>
+                  <p className="text-[11px] text-slate-400">Scheduled events & meetings</p>
+                </div>
+              </div>
+              <Link
+                to="/faculty/calendar"
+                className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+              >
+                <span>Calendar</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              {displayActivities.length > 0 ? (
+                displayActivities.map((act, i) => {
+                  const isAdminActivity = act.createdByRole === 'ADMIN' || act.targetAudience === 'ALL_HODS';
+                  const hasLink = act.link || (act.venue && (act.venue.startsWith('http') || act.venue.includes('meet.google.com') || act.venue.includes('zoom.us')));
+                  const targetUrl = act.link || (hasLink ? (act.venue.startsWith('http') ? act.venue : `https://${act.venue}`) : null);
+                  const formattedDate = act.date ? new Date(act.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+
+                  return (
+                    <div
+                      key={act._id || i}
+                      className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between group shadow-2xs ${
+                        isAdminActivity
+                          ? 'border-l-4 border-l-purple-600 border-slate-200/90 bg-gradient-to-br from-purple-50/40 via-white to-indigo-50/20 hover:border-purple-300'
+                          : 'border-l-4 border-l-blue-600 border-slate-200/90 bg-gradient-to-br from-blue-50/40 via-white to-slate-50/30 hover:border-blue-300'
+                      }`}
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {isAdminActivity ? (
+                            <>
+                              <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-purple-600 text-white flex items-center gap-1 shadow-2xs">
+                                <Shield className="w-2.5 h-2.5" /> Institutional
+                              </span>
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200/60">
+                                Target: All Department HODs
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-blue-600 text-white flex items-center gap-1 shadow-2xs">
+                                <Building2 className="w-2.5 h-2.5" /> Dept Internal
+                              </span>
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/60">
+                                By HOD ({facultyDept} Faculty)
+                              </span>
+                            </>
+                          )}
+                        </div>
+
+                        <h4 className="text-xs font-black text-slate-900 group-hover:text-blue-600 transition-colors">
+                          {act.title}
+                        </h4>
+
+                        {act.description && (
+                          <p className="text-[11px] text-slate-500 line-clamp-1">
+                            {act.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold pt-2 mt-2 border-t border-slate-100/80">
+                        <div className="flex items-center gap-2">
+                          {formattedDate && (
+                            <span className="flex items-center gap-1 text-slate-600">
+                              <Calendar className="w-3 h-3 text-blue-500" />
+                              {formattedDate} {act.time ? `• ${act.time}` : ''}
+                            </span>
+                          )}
+                          {act.venue && (
+                            <span className="flex items-center gap-1 text-slate-500 truncate max-w-[130px]">
+                              <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                              {act.venue}
+                            </span>
+                          )}
+                        </div>
+
+                        {targetUrl && (
+                          <a
+                            href={targetUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 text-[10px] font-black ml-auto"
+                          >
+                            <span>Join</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-8 text-center text-slate-400 text-xs">
+                  No upcoming activities scheduled.
+                </div>
+              )}
+            </div>
           </div>
         </motion.div>
       </div>
-
-      {/* ── 🌟 UPCOMING DEPARTMENT ACTIVITIES (PLANNED BY HOD) ── */}
-      <motion.div
-        variants={itemVariants}
-        className="bg-white rounded-3xl p-6 border shadow-xs space-y-4"
-        style={{ borderColor: '#e8edf5' }}
-      >
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-blue-600" />
-            <h3 className="text-sm font-black text-slate-900">Upcoming Department Activities</h3>
-          </div>
-          <Link
-            to="/faculty/calendar"
-            className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
-          >
-            <span>View Calendar</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-
-        {displayActivities.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {displayActivities.map((act, i) => {
-              const isAdminActivity = act.createdByRole === 'ADMIN' || act.targetAudience === 'ALL_HODS';
-              const hasLink = act.link || (act.venue && (act.venue.startsWith('http') || act.venue.includes('meet.google.com') || act.venue.includes('zoom.us')));
-              const targetUrl = act.link || (hasLink ? (act.venue.startsWith('http') ? act.venue : `https://${act.venue}`) : null);
-              const formattedDate = act.date ? new Date(act.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-
-              return (
-                <div
-                  key={act._id || i}
-                  className={`p-4 rounded-2xl border transition-all flex flex-col justify-between group shadow-2xs ${
-                    isAdminActivity
-                      ? 'border-l-4 border-l-purple-600 border-slate-200/90 bg-gradient-to-br from-purple-50/40 via-white to-indigo-50/20 hover:border-purple-300'
-                      : 'border-l-4 border-l-blue-600 border-slate-200/90 bg-gradient-to-br from-blue-50/40 via-white to-slate-50/30 hover:border-blue-300'
-                  }`}
-                >
-                  <div className="space-y-2">
-                    {/* Top Organizer & Audience Badges */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {isAdminActivity ? (
-                        <>
-                          <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-purple-600 text-white flex items-center gap-1 shadow-2xs">
-                            <Shield className="w-2.5 h-2.5" /> Institutional
-                          </span>
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-800 border border-purple-200/80 flex items-center gap-1">
-                            <Shield className="w-2.5 h-2.5 text-purple-600" /> Principal / Admin (All HODs)
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-blue-600 text-white flex items-center gap-1 shadow-2xs">
-                            <Building2 className="w-2.5 h-2.5" /> Dept Internal
-                          </span>
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200/80 flex items-center gap-1">
-                            <Building2 className="w-2.5 h-2.5 text-blue-600" /> By HOD ({profile?.department || 'CSE'} Faculty)
-                          </span>
-                        </>
-                      )}
-                    </div>
-
-                    <Link to="/faculty/calendar" className="block">
-                      <h4 className="text-xs font-black text-slate-900 group-hover:text-blue-600 transition-colors">
-                        {act.title}
-                      </h4>
-                      {act.description && (
-                        <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                          {act.description}
-                        </p>
-                      )}
-                    </Link>
-                  </div>
-
-                  <div className="mt-3 pt-2 border-t border-slate-100/90 flex items-center justify-between gap-2 text-[10px] font-bold text-slate-500">
-                    <div className="flex items-center gap-2 truncate">
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{formattedDate ? `${formattedDate} · ` : ''}{act.time || '10:00 AM'}</span>
-                      </div>
-                      {act.venue && !hasLink && (
-                        <div className="flex items-center gap-1 truncate text-slate-400">
-                          <MapPin className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{act.venue}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {hasLink && (
-                      <a
-                        href={targetUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-800 font-bold px-2.5 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors shrink-0"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        <span>Join</span>
-                      </a>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="py-8 text-center bg-slate-50 rounded-2xl border border-slate-100 text-slate-400">
-            <Calendar className="w-8 h-8 mx-auto text-slate-300 mb-1" />
-            <p className="font-bold text-xs text-slate-600">No scheduled activities</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Your Head of Department has not scheduled new events yet.</p>
-          </div>
-        )}
-      </motion.div>
 
     </motion.div>
   );
