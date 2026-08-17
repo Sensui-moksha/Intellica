@@ -362,20 +362,16 @@ export default function Login() {
         initial={{ opacity: 0, y: 18, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
-        className="w-full max-w-[460px] bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-8 sm:p-9 border relative z-10"
+        className="w-full max-w-[450px] bg-white rounded-3xl shadow-2xl p-8 border relative z-10"
         style={{ borderColor: '#e2e8f0' }}
       >
         {/* Brand Logo & Header */}
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-full max-w-[330px] flex items-center justify-center mb-3">
-            <img
-              src={micLogo}
-              alt="DVR & Dr. HS MIC College of Technology"
-              className="w-full h-auto max-h-14 object-contain select-none block"
-            />
+          <div className="w-full max-w-[320px] px-2 py-1.5 mb-2.5 flex items-center justify-center">
+            <img src={micLogo} alt="DVR & Dr. HS MIC College of Technology" className="w-full h-auto max-h-16 object-contain" />
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Intellica</h1>
-          <p className="text-xs font-semibold text-slate-400 mt-0.5">Faculty Research Management System</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Intellica</h1>
+          <p className="text-xs font-medium text-slate-500 mt-0.5">Faculty Research Management System</p>
         </div>
 
         {/* Global Notifications & Alerts */}
