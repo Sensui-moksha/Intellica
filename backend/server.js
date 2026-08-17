@@ -6,7 +6,7 @@ const session  = require("express-session");
 const MongoStore = require("connect-mongo");
 const path     = require("path");
 const fs       = require("fs");
-require("dotenv").config();
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const { initSocket } = require("./utils/socket");
 

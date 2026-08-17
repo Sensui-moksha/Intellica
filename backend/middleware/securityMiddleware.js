@@ -111,19 +111,10 @@ const pathHeadersMiddleware = (req, res, next) => {
 
   // Prevent back-button caching of authenticated screens
   if (req.path.startsWith("/api/auth")) {
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
-  }
-
-  next();
-};
-
-  // Extra: protect referrer on sensitive API paths
-  if (req.path.startsWith("/api/auth")) {
     res.setHeader("Referrer-Policy", "no-referrer");
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
     res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
   }
 
   next();
