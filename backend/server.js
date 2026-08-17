@@ -40,6 +40,9 @@ const {
 // ── 5. Express app ────────────────────────────────────────────────────────────
 const app = express();
 
+// Trust reverse proxy (Traefik / Coolify / Nginx) for HTTPS headers & client IP
+app.set("trust proxy", 1);
+
 /* ═══════════════════════════════════════════════════════════════════════════
    MIDDLEWARE STACK  (order matters)
 ═══════════════════════════════════════════════════════════════════════════ */
@@ -92,8 +95,8 @@ app.use(session({
   }),
   cookie: {
     httpOnly: true,                                    // invisible to JS — XSS proof
-    secure: IS_PROD,                                   // HTTPS-only in production
-    sameSite: IS_PROD ? "strict" : "lax",             // CSRF protection
+    secure: "auto",                                    // auto-detect HTTPS based on trust proxy
+    sameSite: "lax",                                   // CSRF protection without redirect loops
     maxAge: 8 * 60 * 60 * 1000,                       // 8 hours in ms
   },
 }));

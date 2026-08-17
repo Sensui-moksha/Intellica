@@ -24,15 +24,12 @@ const helmetMiddleware = helmet({
       // Allow framing for PDF/image previews in same origin and network/LAN iframes
       frameAncestors: ["'self'", "http://*", "https://*"],
       objectSrc: ["'self'", "data:", "blob:"],
-      upgradeInsecureRequests: process.env.NODE_ENV === "production" ? [] : null,
+      upgradeInsecureRequests: null,
     },
   },
   crossOriginEmbedderPolicy: false,     // Required for PDF rendering in iframes
   crossOriginResourcePolicy: { policy: "cross-origin" },  // Allow uploads serving
-  hsts: {
-    maxAge: process.env.NODE_ENV === "production" ? 31536000 : 0,
-    includeSubDomains: true,
-  },
+  hsts: false,                          // Handled at Traefik/Coolify SSL proxy level
   frameguard: false,    // We manage this per-path below
   referrerPolicy: { policy: "strict-origin-when-cross-origin" },
   noSniff: true,
