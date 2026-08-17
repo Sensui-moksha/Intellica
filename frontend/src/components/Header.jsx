@@ -7,6 +7,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { notificationApi, authApi, hodApi, facultyApi } from '../api/services';
 import { subscribeToRealtimeEvent, SYNC_EVENTS } from '../utils/syncEvents';
+import { joinSocketRooms } from '../utils/socket';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
 
@@ -47,6 +48,15 @@ export default function Header() {
     authApi.getMe().then(res => {
       if (res?.data) {
         setProfileData(res.data);
+        const uid = res.data._id || res.data.id;
+        if (uid) {
+          localStorage.setItem('userId', uid);
+          joinSocketRooms({
+            userId: uid,
+            role: res.data.role || role,
+            department: res.data.department || department
+          });
+        }
         if (res.data.profileImage) {
           localStorage.setItem('profileImage', res.data.profileImage);
         }

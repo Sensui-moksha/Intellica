@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
  * 1. Targeted personal notifications (e.g. Neil's rejection/approval) only go to that user
  * 2. Department-specific HOD notifications (e.g. CSE faculty submission) only go to CSE HOD
  * 3. Administrative notices go to Admin
+ * 4. Faculty NEVER receive another user's proposal decisions
  */
 function buildNotificationQuery(user) {
   const userId = user.id || user._id;
@@ -14,22 +15,25 @@ function buildNotificationQuery(user) {
 
   const conditions = [];
 
-  // 1. Notifications targeted directly to this specific user (e.g. Neil)
-  if (userId) {
+  // 1. Notifications targeted directly to this specific user (e.g. Neil's rejection/approval)
+  if (userId && mongoose.Types.ObjectId.isValid(userId)) {
     conditions.push({ userId: new mongoose.Types.ObjectId(userId.toString()) });
   }
 
   // 2. Role-specific notices
   if (role === "ADMIN") {
+    // Admins see all admin-directed submission/approval alerts
     conditions.push({
       role: { $regex: /^admin$/i },
       $or: [{ userId: null }, { userId: { $exists: false } }]
     });
   } else if (role === "HOD") {
+    // HODs only see submission & verification notices for THEIR department
     const deptRegex = department ? new RegExp(`^${department}$`, 'i') : null;
     conditions.push({
       role: { $regex: /^hod$/i },
       $or: [{ userId: null }, { userId: { $exists: false } }],
+      type: { $in: ["SUBMISSION", "APPROVAL", "GENERAL", "SYSTEM"] },
       ...(deptRegex ? {
         $or: [
           { department: null },
@@ -40,11 +44,14 @@ function buildNotificationQuery(user) {
       } : {})
     });
   } else if (role === "FACULTY") {
-    // Broad institutional notices meant for all faculty without a specific userId
+    // Faculty ONLY see general institutional broadcasts when userId is null.
+    // All approval/rejection/upload-specific notices MUST have their exact userId!
     const deptRegex = department ? new RegExp(`^${department}$`, 'i') : null;
     conditions.push({
       role: { $regex: /^faculty$/i },
       $or: [{ userId: null }, { userId: { $exists: false } }],
+      type: { $in: ["GENERAL", "SYSTEM"] },
+      message: { $not: /Your upload/i },
       ...(deptRegex ? {
         $or: [
           { department: null },
@@ -56,7 +63,7 @@ function buildNotificationQuery(user) {
     });
   }
 
-  return conditions.length > 0 ? { $or: conditions } : {};
+  return conditions.length > 0 ? { $or: conditions } : { _id: null };
 }
 
 exports.getNotifications = async (req, res) => {

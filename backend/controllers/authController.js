@@ -450,6 +450,9 @@ if (foundRole === "HOD") {
 
         return res.status(200).json({
           token,                              // JWT for API/mobile
+          id: user._id.toString(),
+          _id: user._id.toString(),
+          userId: user._id.toString(),
           role: user.role,
           name: user.name || user.regId,
           department: user.department || null,
@@ -584,6 +587,9 @@ exports.verifyOTP = async (req, res) => {
 
     res.status(200).json({
       token,                            // JWT for API/mobile
+      id: user._id.toString(),
+      _id: user._id.toString(),
+      userId: user._id.toString(),
       role: user.role,
       name: user.name,
       department: user.department || null,
