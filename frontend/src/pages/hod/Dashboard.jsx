@@ -11,7 +11,7 @@ import { hodApi, rankingApi, authApi, activityApi } from '../../api/services';
 import { resolveProfileImageUrl } from '../../components/Header';
 import { subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5001';
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
 
 const getGreeting = () => {
   const hour = new Date().getHours();

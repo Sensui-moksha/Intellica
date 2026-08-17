@@ -8,7 +8,7 @@ import { authApi } from '../api/services';
 import { resolveProfileImageUrl } from '../components/Header';
 import ImageCropperModal from '../components/ImageCropperModal';
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5001';
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
 
 export default function Profile() {
   const [saved, setSaved]             = useState(false);

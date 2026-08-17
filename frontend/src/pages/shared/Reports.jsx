@@ -9,10 +9,10 @@ import {
   Eye, FileCheck, Search, X, Layers
 } from 'lucide-react';
 import { reportApi, authApi } from '../../api/services';
-import { resolveProfileImageUrl } from '../../components/Header';
+import { resolveProfileImageUrl, getDocumentUrl } from '../../components/Header';
 import { subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5001';
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
 
 export default function ReportsAndAnalytics() {
   const [data, setData]                       = useState({ departments: [], role: 'ADMIN' });
@@ -570,7 +570,7 @@ export default function ReportsAndAnalytics() {
                                   </span>
                                   {work.filePath && (
                                     <a
-                                      href={`${API_BASE}/${work.filePath.replace(/^\//, '')}`}
+                                      href={getDocumentUrl(work.filePath)}
                                       target="_blank"
                                       rel="noreferrer"
                                       className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
@@ -621,7 +621,7 @@ export default function ReportsAndAnalytics() {
                                   </span>
                                   {work.filePath && (
                                     <a
-                                      href={`${API_BASE}/${work.filePath.replace(/^\//, '')}`}
+                                      href={getDocumentUrl(work.filePath)}
                                       target="_blank"
                                       rel="noreferrer"
                                       className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
@@ -672,7 +672,7 @@ export default function ReportsAndAnalytics() {
                                   </span>
                                   {work.filePath && (
                                     <a
-                                      href={`${API_BASE}/${work.filePath.replace(/^\//, '')}`}
+                                      href={getDocumentUrl(work.filePath)}
                                       target="_blank"
                                       rel="noreferrer"
                                       className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
@@ -720,7 +720,7 @@ export default function ReportsAndAnalytics() {
                                   </span>
                                   {work.filePath && (
                                     <a
-                                      href={`${API_BASE}/${work.filePath.replace(/^\//, '')}`}
+                                      href={getDocumentUrl(work.filePath)}
                                       target="_blank"
                                       rel="noreferrer"
                                       className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"

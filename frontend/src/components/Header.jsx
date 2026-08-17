@@ -25,6 +25,16 @@ export const resolveProfileImageUrl = (img) => {
   return `/uploads/${trimmed.replace(/^uploads\//, '')}`;
 };
 
+export const getDocumentUrl = (filePath) => {
+  if (!filePath || typeof filePath !== 'string') return '';
+  const trimmed = filePath.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+  const cleanPath = trimmed.replace(/^(\/?uploads\/)+/, '').replace(/^\/+/, '');
+  return encodeURI(`/uploads/${cleanPath}`);
+};
+
 export default function Header() {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);

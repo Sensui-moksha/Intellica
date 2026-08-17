@@ -27,7 +27,7 @@ export default function HodApprovals() {
   const getDocumentUrl = (filePath) => {
     if (!filePath) return '';
     const cleanPath = filePath.replace(/^(\/?uploads\/)+/, '').replace(/^\/+/, '');
-    return encodeURI(`http://localhost:5001/uploads/${cleanPath}`);
+    return encodeURI(`/uploads/${cleanPath}`);
   };
 
   useEffect(() => {

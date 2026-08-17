@@ -8,7 +8,7 @@ import {
 import { adminApi } from '../../api/services';
 import { emitRealtimeEvent, subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5001';
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
 
 export default function AdminApprovals() {
   const [activeTab, setActiveTab]         = useState('PENDING'); // 'PENDING' | 'APPROVED' | 'REJECTED'
@@ -32,7 +32,7 @@ export default function AdminApprovals() {
   const getDocumentUrl = (filePath) => {
     if (!filePath) return '';
     const cleanPath = filePath.replace(/^(\/?uploads\/)+/, '').replace(/^\/+/, '');
-    return encodeURI(`${API_BASE}/uploads/${cleanPath}`);
+    return encodeURI(`/uploads/${cleanPath}`);
   };
 
   useEffect(() => {
