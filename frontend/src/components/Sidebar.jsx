@@ -4,9 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutGrid, Building2, Users2, CheckSquare,
   SlidersHorizontal, ListOrdered, Settings,
-  LogOut, HelpCircle, Send, BarChart3, Calendar
+  LogOut, HelpCircle, Send, BarChart3, Calendar, FileText
 } from 'lucide-react';
 import { adminApi, hodApi, authApi } from '../api/services';
+
+import micEmblem from '../assets/mic_emblem.png';
 
 const sidebarVariants = {
   hidden: {},
@@ -59,7 +61,8 @@ export default function Sidebar({ role }) {
     ],
     FACULTY: [
       { name: 'Dashboard', path: '/faculty/dashboard', icon: LayoutGrid },
-      { name: 'My Activities', path: '/faculty/my-activities', icon: ListOrdered },
+      { name: 'My Uploads', path: '/faculty/my-uploads', icon: FileText },
+      { name: 'Standings', path: '/faculty/standings', icon: BarChart3 },
       { name: 'Calendar', path: '/faculty/calendar', icon: Calendar },
       { name: 'Settings', path: '/faculty/settings', icon: Settings },
     ],
@@ -68,7 +71,7 @@ export default function Sidebar({ role }) {
   const links = navItems[role] || [];
   const roleLabel = {
     ADMIN: 'Admin Portal',
-    HOD: 'Department Portal',
+    HOD: 'HOD Portal',
     FACULTY: 'Faculty Portal'
   };
 
@@ -105,11 +108,11 @@ export default function Sidebar({ role }) {
       >
         <div className="flex items-center gap-3">
           <motion.div
-            whileHover={{ scale: 1.08, rotate: 3 }}
+            whileHover={{ scale: 1.08 }}
             transition={{ type: "spring", stiffness: 400 }}
-            className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-md shadow-blue-500/25 shrink-0"
+            className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/80 p-1 flex items-center justify-center shadow-sm shrink-0 overflow-hidden"
           >
-            <span className="text-base font-black">I</span>
+            <img src={micEmblem} alt="MIC Emblem" className="w-full h-full object-contain" />
           </motion.div>
           <div>
             <h2 className="text-base font-black text-slate-900 tracking-tight leading-tight">Intellica</h2>
