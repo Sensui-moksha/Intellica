@@ -37,11 +37,16 @@ const sendMail = async (mailOptions) => {
     // If no remote logo URL provided and caller didn't skip it, attach local logo as inline CID so <img src="cid:mic_logo"> works
     if (!process.env.EMAIL_LOGO_URL && !skipLogo) {
       try {
-        const candidate = path.join(__dirname, '..', '..', 'frontend', 'src', 'assets', 'logo.png');
-        if (fs.existsSync(candidate)) {
+        const candidates = [
+          path.join(__dirname, '..', 'assets', 'mic_logo.png'),
+          path.join(__dirname, '..', '..', 'frontend', 'src', 'assets', 'mic_logo.png'),
+          path.join(__dirname, '..', '..', 'frontend', 'src', 'assets', 'logo.png')
+        ];
+        const foundPath = candidates.find(p => fs.existsSync(p));
+        if (foundPath) {
           mailOptions.attachments = (mailOptions.attachments || []).concat({
-            filename: path.basename(candidate),
-            path: candidate,
+            filename: 'mic_logo.png',
+            path: foundPath,
             cid: 'mic_logo',
             contentDisposition: 'inline'
           });
@@ -132,12 +137,14 @@ const emailWrapper = (bodyContent) => `
 
 const headerBand = (subtitle) => `
   <tr>
-    <td style="background: linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.navyMid} 50%, ${COLORS.navyLight} 100%); padding:36px 32px 28px; text-align:center;">
-      <img src="${getLogoSrc()}" alt="MIC Logo" style="height:72px; width:auto; display:block; margin:0 auto 16px; object-fit:contain;" />
-      <h1 style="margin:0; font-size:20px; font-weight:800; letter-spacing:1.5px; color:${COLORS.white}; font-family:${FONT}; text-transform:uppercase;">
-        MIC &ndash; Intellica Portal
+    <td style="background: linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.navyMid} 50%, ${COLORS.navyLight} 100%); padding:30px 24px 22px; text-align:center;">
+      <div style="background:#ffffff; border-radius:12px; padding:10px 18px; display:inline-block; max-width:340px; width:92%; box-shadow:0 4px 12px rgba(0,0,0,0.18); margin-bottom:12px;">
+        <img src="${getLogoSrc()}" alt="DVR & Dr. HS MIC College of Technology" style="width:100%; max-width:320px; height:auto; display:block; margin:0 auto; object-fit:contain;" />
+      </div>
+      <h1 style="margin:0; font-size:18px; font-weight:800; letter-spacing:1.5px; color:${COLORS.white}; font-family:${FONT}; text-transform:uppercase;">
+        INTELLICA PORTAL
       </h1>
-      ${subtitle ? `<p style="margin:8px 0 0; font-size:13px; color:rgba(255,255,255,0.6); font-family:${FONT}; font-weight:500;">${subtitle}</p>` : ''}
+      ${subtitle ? `<p style="margin:6px 0 0; font-size:12px; color:rgba(255,255,255,0.7); font-family:${FONT}; font-weight:500;">${subtitle}</p>` : ''}
     </td>
   </tr>`;
 
