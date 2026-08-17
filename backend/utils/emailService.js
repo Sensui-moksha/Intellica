@@ -128,12 +128,12 @@ const emailWrapper = (bodyContent) => `
 
 const headerBand = (subtitle) => `
   <tr>
-    <td style="background: linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.navyMid} 50%, ${COLORS.navyLight} 100%); padding:30px 24px 22px; text-align:center;">
-      <div style="background:#ffffff; border-radius:12px; padding:10px 18px; display:inline-block; max-width:340px; width:92%; box-shadow:0 4px 12px rgba(0,0,0,0.18); margin-bottom:12px;">
-        <img src="${getLogoSrc()}" alt="DVR & Dr. HS MIC College of Technology" style="width:100%; max-width:320px; height:auto; display:block; margin:0 auto; object-fit:contain;" />
+    <td style="background: linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.navyMid} 50%, ${COLORS.navyLight} 100%); padding:28px 24px 22px; text-align:center;">
+      <div style="background:#ffffff; border-radius:18px; padding:8px; display:inline-block; width:64px; height:64px; box-shadow:0 4px 14px rgba(0,0,0,0.22); margin-bottom:12px;">
+        <img src="${getLogoSrc()}" alt="MIC College of Technology" style="width:100%; height:100%; display:block; margin:0 auto; object-fit:contain;" />
       </div>
       <h1 style="margin:0; font-size:18px; font-weight:800; letter-spacing:1.5px; color:${COLORS.white}; font-family:${FONT}; text-transform:uppercase;">
-        INTELLICA PORTAL
+        MIC &ndash; INTELLICA PORTAL
       </h1>
       ${subtitle ? `<p style="margin:6px 0 0; font-size:12px; color:rgba(255,255,255,0.7); font-family:${FONT}; font-weight:500;">${subtitle}</p>` : ''}
     </td>
