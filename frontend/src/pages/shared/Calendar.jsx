@@ -6,13 +6,13 @@ import {
   Edit3, X, CheckCircle2, AlertCircle, Building2,
   CalendarCheck, CalendarDays, Filter, Shield,
   BookOpen, Wrench, Mic, Coins, Building, Bookmark,
-  Sparkles, Link2, ExternalLink, Globe
+  Sparkles, Link2, ExternalLink, Globe, Crown, Briefcase
 } from 'lucide-react';
 import { activityApi, authApi } from '../../api/services';
 import { emitRealtimeEvent, subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
 
 const TYPE_CONFIG = {
-  MEETING:         { label: 'Department Meeting', color: 'bg-blue-50 text-blue-700 border-blue-200/80', icon: Users },
+  MEETING:         { label: 'Meeting',            color: 'bg-blue-50 text-blue-700 border-blue-200/80', icon: Users },
   RESEARCH_REVIEW: { label: 'Research Review',    color: 'bg-purple-50 text-purple-700 border-purple-200/80', icon: BookOpen },
   WORKSHOP:        { label: 'Workshop',           color: 'bg-emerald-50 text-emerald-700 border-emerald-200/80', icon: Wrench },
   SEMINAR:         { label: 'Seminar',            color: 'bg-indigo-50 text-indigo-700 border-indigo-200/80', icon: Mic },
@@ -24,14 +24,24 @@ const TYPE_CONFIG = {
 };
 
 const getActivityDisplay = (act) => {
+  const isAdmin = act?.createdByRole === 'ADMIN' || act?.targetAudience === 'ALL_HODS';
   if (act.type === 'CUSTOM' || act.customTypeName) {
     return {
       label: act.customTypeName || 'Custom Activity',
-      color: 'bg-violet-50 text-violet-700 border-violet-200/80',
+      color: isAdmin ? 'bg-purple-50 text-purple-700 border-purple-200/80' : 'bg-violet-50 text-violet-700 border-violet-200/80',
       icon: Sparkles
     };
   }
-  return TYPE_CONFIG[act.type] || TYPE_CONFIG.OTHER;
+  const base = TYPE_CONFIG[act.type] || TYPE_CONFIG.OTHER;
+  if (act.type === 'MEETING') {
+    return {
+      ...base,
+      label: isAdmin ? 'Institutional / Admin Meeting' : 'Department Meeting',
+      color: isAdmin ? 'bg-purple-50 text-purple-700 border-purple-200/80' : 'bg-blue-50 text-blue-700 border-blue-200/80',
+      icon: isAdmin ? Shield : Users
+    };
+  }
+  return base;
 };
 
 const isLink = (val) => {
@@ -233,6 +243,9 @@ export default function DepartmentCalendar() {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   };
 
+  // Filter State: Type + Scope/Audience Filter
+  const [audienceFilter, setAudienceFilter] = useState('ALL'); // 'ALL' | 'ADMIN_FOR_HODS' | 'DEPT_INTERNAL'
+
   // Calendar Day Generation
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
@@ -241,7 +254,14 @@ export default function DepartmentCalendar() {
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+  const adminEventsCount = activities.filter(a => a.createdByRole === 'ADMIN' || a.targetAudience === 'ALL_HODS').length;
+  const deptEventsCount = activities.filter(a => a.createdByRole !== 'ADMIN' && a.targetAudience !== 'ALL_HODS').length;
+
   const filteredActivities = activities.filter(a => {
+    const isAdminAct = a.createdByRole === 'ADMIN' || a.targetAudience === 'ALL_HODS';
+    if (audienceFilter === 'ADMIN_FOR_HODS' && !isAdminAct) return false;
+    if (audienceFilter === 'DEPT_INTERNAL' && isAdminAct) return false;
+
     if (typeFilter !== 'ALL') {
       if (typeFilter === 'CUSTOM') {
         if (a.type !== 'CUSTOM' && !a.customTypeName) return false;
@@ -330,42 +350,97 @@ export default function DepartmentCalendar() {
         )}
       </AnimatePresence>
 
-      {/* Category Filter Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-        <span className="text-slate-400 font-bold text-[11px] flex items-center gap-1 shrink-0">
-          <Filter className="w-3.5 h-3.5" /> Filter:
-        </span>
-        <button
-          onClick={() => setTypeFilter('ALL')}
-          className={`px-3 py-1.5 rounded-xl font-bold transition-all shrink-0 cursor-pointer ${
-            typeFilter === 'ALL'
-              ? 'bg-slate-900 text-white shadow-2xs'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          All Activities ({activities.length})
-        </button>
-        {Object.entries(TYPE_CONFIG).map(([typeKey, cfg]) => {
-          if (typeKey === 'CUSTOM') return null; // Only show predefined in pills
-          const count = activities.filter(a => a.type === typeKey).length;
-          if (count === 0 && typeFilter !== typeKey) return null;
-          const Icon = cfg.icon;
-          return (
-            <button
-              key={typeKey}
-              onClick={() => setTypeFilter(typeKey)}
-              className={`px-3 py-1.5 rounded-xl font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
-                typeFilter === typeKey
-                  ? 'bg-blue-600 text-white shadow-2xs'
-                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{cfg.label}</span>
-              <span className="text-[10px] opacity-75">({count})</span>
-            </button>
-          );
-        })}
+      {/* ── Scope & Organizer Filter Tabs (Admin vs Department) ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2 bg-slate-100/70 rounded-2xl border border-slate-200/80">
+        <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
+          <button
+            type="button"
+            onClick={() => setAudienceFilter('ALL')}
+            className={`px-3.5 py-1.5 rounded-xl font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              audienceFilter === 'ALL'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5 text-blue-600" />
+            <span>All Schedules</span>
+            <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-700">
+              {activities.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAudienceFilter('ADMIN_FOR_HODS')}
+            className={`px-3.5 py-1.5 rounded-xl font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              audienceFilter === 'ADMIN_FOR_HODS'
+                ? 'bg-purple-600 text-white shadow-xs'
+                : 'text-purple-700 hover:bg-purple-50'
+            }`}
+          >
+            <Shield className="w-3.5 h-3.5" />
+            <span>By Admin / Principal (For HODs)</span>
+            <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+              audienceFilter === 'ADMIN_FOR_HODS' ? 'bg-purple-700 text-white' : 'bg-purple-100 text-purple-800'
+            }`}>
+              {adminEventsCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAudienceFilter('DEPT_INTERNAL')}
+            className={`px-3.5 py-1.5 rounded-xl font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              audienceFilter === 'DEPT_INTERNAL'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-blue-700 hover:bg-blue-50'
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            <span>By HOD (Department Internal)</span>
+            <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+              audienceFilter === 'DEPT_INTERNAL' ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800'
+            }`}>
+              {deptEventsCount}
+            </span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1.5 overflow-x-auto text-xs self-end sm:self-auto">
+          <span className="text-slate-400 font-bold text-[10px] uppercase tracking-wider flex items-center gap-1 shrink-0 px-1">
+            <Filter className="w-3 h-3" /> Type:
+          </span>
+          <button
+            onClick={() => setTypeFilter('ALL')}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 cursor-pointer ${
+              typeFilter === 'ALL'
+                ? 'bg-slate-800 text-white'
+                : 'bg-white text-slate-600 hover:bg-slate-200/70'
+            }`}
+          >
+            All Types
+          </button>
+          {Object.entries(TYPE_CONFIG).map(([typeKey, cfg]) => {
+            if (typeKey === 'CUSTOM') return null;
+            const count = activities.filter(a => a.type === typeKey).length;
+            if (count === 0 && typeFilter !== typeKey) return null;
+            const Icon = cfg.icon;
+            return (
+              <button
+                key={typeKey}
+                onClick={() => setTypeFilter(typeKey)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
+                  typeFilter === typeKey
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-slate-600 hover:bg-slate-200/70'
+                }`}
+              >
+                <Icon className="w-3 h-3" />
+                <span>{cfg.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -426,6 +501,8 @@ export default function DepartmentCalendar() {
                 new Date().getFullYear() === year;
 
               const dayActs = getDayActivities(dayNumber);
+              const hasAdminAct = dayActs.some(a => a.createdByRole === 'ADMIN' || a.targetAudience === 'ALL_HODS');
+              const hasDeptAct = dayActs.some(a => a.createdByRole !== 'ADMIN' && a.targetAudience !== 'ALL_HODS');
 
               return (
                 <div
@@ -454,8 +531,11 @@ export default function DepartmentCalendar() {
                           +
                         </span>
                       )}
-                      {dayActs.length > 0 && (
-                        <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                      {hasAdminAct && (
+                        <span className="w-2 h-2 rounded-full bg-purple-600 shrink-0" title="Admin/Institutional Activity" />
+                      )}
+                      {hasDeptAct && (
+                        <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" title="Department Internal Activity" />
                       )}
                     </div>
                   </div>
@@ -464,7 +544,8 @@ export default function DepartmentCalendar() {
                     {dayActs.slice(0, 2).map((act) => {
                       const display = getActivityDisplay(act);
                       const Icon = display.icon;
-                      const canEditThis = isSuperAdmin || (isHOD && act.createdByRole !== 'ADMIN');
+                      const isAdmin = act.createdByRole === 'ADMIN' || act.targetAudience === 'ALL_HODS';
+                      const canEditThis = isSuperAdmin || (isHOD && !isAdmin);
                       return (
                         <div
                           key={act._id}
@@ -472,11 +553,15 @@ export default function DepartmentCalendar() {
                             e.stopPropagation();
                             if (canEditThis) handleOpenEdit(act);
                           }}
-                          title={`${act.title} (${act.time}) - ${act.venue}`}
-                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md truncate cursor-pointer transition-transform hover:scale-102 flex items-center gap-1 ${display.color}`}
+                          title={`${isAdmin ? '[Admin / All HODs]' : '[Dept Internal]'} ${act.title} (${act.time}) - ${act.venue}`}
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md truncate cursor-pointer transition-transform hover:scale-102 flex items-center gap-1 ${
+                            isAdmin
+                              ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                              : 'bg-blue-50 text-blue-800 border border-blue-200'
+                          }`}
                         >
                           <Icon className="w-2.5 h-2.5 shrink-0" />
-                          <span className="truncate">{act.title}</span>
+                          <span className="truncate">{isAdmin ? `Admin: ${act.title}` : `Dept: ${act.title}`}</span>
                         </div>
                       );
                     })}
@@ -529,23 +614,27 @@ export default function DepartmentCalendar() {
                 <motion.div
                   key={act._id}
                   whileHover={{ y: -1 }}
-                  className="p-4 rounded-2xl border border-slate-200/80 hover:border-blue-300 transition-all bg-white shadow-2xs space-y-2.5"
+                  className={`p-4 rounded-2xl border transition-all shadow-2xs space-y-2.5 ${
+                    isAdminActivity
+                      ? 'border-l-4 border-l-purple-600 border-slate-200/90 bg-gradient-to-br from-purple-50/40 via-white to-indigo-50/20 hover:border-purple-300'
+                      : 'border-l-4 border-l-blue-600 border-slate-200/90 bg-gradient-to-br from-blue-50/40 via-white to-slate-50/30 hover:border-blue-300'
+                  }`}
                 >
-                  <div className="flex items-start justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${display.color}`}>
-                        <Icon className="w-3 h-3" />
-                        <span>{display.label}</span>
-                      </span>
+                  {/* Top Scope & Organizer Banner */}
+                  <div className="flex items-center justify-between gap-1.5 pb-1 border-b border-slate-100/80">
+                    <div className="flex items-center gap-1.5">
                       {isAdminActivity ? (
-                        <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200/70 flex items-center gap-1">
-                          <Shield className="w-2.5 h-2.5" /> All HODs
+                        <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-purple-600 text-white flex items-center gap-1 shadow-2xs">
+                          <Shield className="w-2.5 h-2.5" /> Institutional Level
                         </span>
                       ) : (
-                        <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200/70 flex items-center gap-1">
-                          <Users className="w-2.5 h-2.5" /> {act.department || selectedDept} Faculty
+                        <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-blue-600 text-white flex items-center gap-1 shadow-2xs">
+                          <Building2 className="w-2.5 h-2.5" /> Department Internal
                         </span>
                       )}
+                      <span className="text-[10px] font-bold text-slate-500">
+                        {isAdminActivity ? 'Called by Admin / Principal' : `Called by HOD (${act.department || selectedDept})`}
+                      </span>
                     </div>
 
                     {canEditThis && (
@@ -565,6 +654,24 @@ export default function DepartmentCalendar() {
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
+                    )}
+                  </div>
+
+                  {/* Badges: Type + Target Audience */}
+                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${display.color}`}>
+                      <Icon className="w-3 h-3" />
+                      <span>{display.label}</span>
+                    </span>
+
+                    {isAdminActivity ? (
+                      <span className="text-[9px] font-black px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200/80 flex items-center gap-1">
+                        <Users className="w-2.5 h-2.5 text-amber-600" /> Target: All Department HODs
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-black px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 flex items-center gap-1">
+                        <Users className="w-2.5 h-2.5 text-emerald-600" /> Target: {act.department || selectedDept} Faculty Members
+                      </span>
                     )}
                   </div>
 
@@ -637,21 +744,25 @@ export default function DepartmentCalendar() {
             >
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-500/25 shrink-0">
-                    <CalendarIcon className="w-5 h-5" />
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold shadow-md shrink-0 ${
+                    isSuperAdmin
+                      ? 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-purple-500/25'
+                      : 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-blue-500/25'
+                  }`}>
+                    {isSuperAdmin ? <Shield className="w-5 h-5" /> : <CalendarIcon className="w-5 h-5" />}
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-slate-900">
                       {editTarget
                         ? 'Edit Activity'
                         : isSuperAdmin
-                          ? 'Plan Institutional Activity for All HODs'
+                          ? 'Plan Institutional Activity (For All HODs)'
                           : `Plan Department Activity for ${selectedDept || 'CSE'}`}
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">
                       {isSuperAdmin
-                        ? 'Schedule meetings and milestone reviews visible to all Department Heads (HODs)'
-                        : `Schedule meetings and reviews visible to ${selectedDept || 'CSE'} faculty members`}
+                        ? 'Institutional meeting or milestone review called by Administrator / Principal for all HODs'
+                        : `Departmental meeting or review planned by HOD for ${selectedDept || 'CSE'} faculty`}
                     </p>
                   </div>
                 </div>
@@ -665,14 +776,27 @@ export default function DepartmentCalendar() {
               </div>
 
               {/* Target Audience Banner */}
-              <div className="p-3 bg-blue-50/60 border border-blue-200/60 rounded-2xl text-xs font-bold text-blue-900 flex items-center gap-2">
-                <Users className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>
-                  {isSuperAdmin
-                    ? 'Target Audience: Visible to All Department Heads (HODs)'
-                    : `Target Audience: Visible only to Department of ${selectedDept || 'CSE'} Faculty`}
-                </span>
-              </div>
+              {isSuperAdmin ? (
+                <div className="p-3.5 bg-purple-50 border border-purple-200 rounded-2xl text-xs font-bold text-purple-900 flex items-start gap-2.5">
+                  <Shield className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-black">🏛️ Scope: Institutional Leadership Event</p>
+                    <p className="text-[11px] text-purple-700 font-medium mt-0.5">
+                      This schedule will appear on the calendar and agenda of <strong>all Department Heads (HODs)</strong> college-wide.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-2xl text-xs font-bold text-blue-900 flex items-start gap-2.5">
+                  <Building2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-black">🏢 Scope: Department Internal Schedule</p>
+                    <p className="text-[11px] text-blue-700 font-medium mt-0.5">
+                      This schedule will be visible exclusively to <strong>{selectedDept || 'CSE'} Department Faculty</strong> and yourself.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <form onSubmit={handleSave} className="space-y-4.5">
                 {/* Activity Type Selector with Custom Option */}
