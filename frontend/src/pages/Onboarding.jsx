@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShieldCheck, Lock, Eye, EyeOff, BookOpen, Award, CheckCircle2,
   ArrowRight, ArrowLeft, Sparkles, User, Briefcase, GraduationCap,
-  Camera, Crop, Upload, Check, Loader2, RefreshCw
+  Camera, Crop, Loader2
 } from 'lucide-react';
 import { authApi } from '../api/services';
 import ImageCropperModal from '../components/ImageCropperModal';
@@ -286,24 +286,30 @@ export default function Onboarding() {
               </div>
             </div>
 
-            {/* Designation Field */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Academic Designation / Title
-              </label>
-              <select
-                value={designation}
-                onChange={e => setDesignation(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border rounded-2xl text-xs font-semibold outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 text-slate-800"
-                style={{ borderColor: '#e2e8f0' }}
-              >
-                <option value="Professor & HOD">Professor & HOD</option>
-                <option value="Professor">Professor</option>
-                <option value="Associate Professor">Associate Professor</option>
-                <option value="Assistant Professor">Assistant Professor</option>
-                <option value="Institutional Administrator">Institutional Administrator</option>
-                <option value="Dean / Director">Dean / Director</option>
-              </select>
+            {/* Read-Only Assigned Designation & Department Card */}
+            <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Assigned Designation & Department
+                </span>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200/60">
+                  Assigned by Admin / HOD
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-3 pt-1">
+                <div className="w-10 h-10 rounded-xl bg-blue-600/10 text-blue-600 flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                  <Briefcase className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-slate-900 truncate">
+                    {currentUser?.designation || designation || 'Faculty Member'}
+                  </p>
+                  <p className="text-[11px] font-semibold text-slate-500 truncate mt-0.5">
+                    Department of {currentUser?.department || 'Academic'} • ID: {currentUser?.employeeId || currentUser?.regId || 'Staff'}
+                  </p>
+                </div>
+              </div>
             </div>
 
             <button
