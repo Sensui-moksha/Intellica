@@ -2,6 +2,7 @@ const DepartmentActivity = require("../models/DepartmentActivity");
 const HOD = require("../models/HOD");
 const Faculty = require("../models/Faculty");
 const User = require("../models/User");
+const { sendActivityEmailToHODs, sendActivityEmailToFaculty } = require("../utils/emailService");
 
 /* =====================================================
    GET ACTIVITIES (ROLE & AUDIENCE FILTERED)
@@ -127,6 +128,40 @@ exports.createActivity = async (req, res) => {
     });
 
     await newActivity.save();
+
+    // ── Fire email notifications (non-blocking) ──
+    const savedActivity = newActivity.toObject();
+    if (role === "ADMIN") {
+      // Admin created → notify ALL approved HODs via email
+      Promise.resolve().then(async () => {
+        try {
+          const hods = await HOD.find({ isApproved: true, status: "APPROVED" }).select("name email department").lean();
+          if (hods.length) {
+            await sendActivityEmailToHODs(savedActivity, hods);
+            console.log(`[EMAIL] Institutional activity "${title}" → ${hods.length} HOD(s) notified`);
+          }
+        } catch (emailErr) {
+          console.error("[EMAIL] Failed to notify HODs about institutional activity:", emailErr.message);
+        }
+      });
+    } else if (role === "HOD") {
+      // HOD created → notify ALL approved Faculty in that department via email
+      Promise.resolve().then(async () => {
+        try {
+          const facultyList = await Faculty.find({
+            department: { $regex: new RegExp(`^${targetDept}$`, "i") },
+            isApproved: true,
+            status: "APPROVED"
+          }).select("name email").lean();
+          if (facultyList.length) {
+            await sendActivityEmailToFaculty(savedActivity, facultyList, targetDept);
+            console.log(`[EMAIL] Dept activity "${title}" (${targetDept}) → ${facultyList.length} faculty notified`);
+          }
+        } catch (emailErr) {
+          console.error("[EMAIL] Failed to notify faculty about dept activity:", emailErr.message);
+        }
+      });
+    }
 
     const audienceLabel = role === "ADMIN" ? "All Department HODs" : `Department of ${targetDept} Faculty`;
 
