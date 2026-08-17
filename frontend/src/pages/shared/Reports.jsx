@@ -40,11 +40,17 @@ export default function ReportsAndAnalytics() {
         reportApi.getAnalytics({ year: yearToLoad }),
         pbasApi.getAllAppraisals(yearToLoad).catch(() => ({ data: [] }))
       ]);
-      setData(res.data || { departments: [], role });
-      // If HOD, automatically select their single department
-      if (res.data?.departments?.length === 1 && !selectedDept) {
-        setSelectedDept(res.data.departments[0]);
+      const fetchedData = res.data || { departments: [], role };
+      setData(fetchedData);
+
+      // If HOD, automatically select their department; Admin ALWAYS sees All Departments overview first
+      if (isHOD && fetchedData.departments?.length > 0 && !selectedDept) {
+        setSelectedDept(fetchedData.departments[0]);
+      } else if (selectedDept) {
+        const refreshed = (fetchedData.departments || []).find(d => d.department === selectedDept.department);
+        if (refreshed) setSelectedDept(refreshed);
       }
+
       const pbasData = Array.isArray(pbasRes?.data) ? pbasRes.data : [];
       const pMap = {};
       pbasData.forEach(p => {
@@ -60,23 +66,19 @@ export default function ReportsAndAnalytics() {
   };
 
   useEffect(() => {
+    let currentYear = '2025-26';
     academicYearApi.getAll().then(res => {
       const list = Array.isArray(res.data) ? res.data : [];
       setAcademicYears(list);
       const current = list.find(y => y.isCurrent) || list[0];
       if (current) {
-        setSelectedYear(current.year);
-        loadAnalytics(false, current.year);
-      } else {
-        loadAnalytics(false, '2025-26');
+        currentYear = current.year;
+        setSelectedYear(currentYear);
       }
+      loadAnalytics(false, currentYear);
     }).catch(() => {
       loadAnalytics(false, '2025-26');
     });
-  }, []);
-
-  useEffect(() => {
-    loadAnalytics(false);
 
     const unsub1 = subscribeToRealtimeEvent(SYNC_EVENTS.ACTIVITIES_UPDATED, () => loadAnalytics(true));
     const unsub2 = subscribeToRealtimeEvent(SYNC_EVENTS.APPROVALS_UPDATED, () => loadAnalytics(true));
