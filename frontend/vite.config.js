@@ -28,19 +28,19 @@ export default defineConfig({
     proxy: {
       // All /api/* calls are proxied to the backend — no CORS in dev
       '/api': {
-        target: `http://localhost:${BACKEND_PORT}`,
+        target: `http://127.0.0.1:${BACKEND_PORT}`,
         changeOrigin: true,
         secure: false,
       },
       // Serve uploaded files (PDFs, images) from the backend static folder
       '/uploads': {
-        target: `http://localhost:${BACKEND_PORT}`,
+        target: `http://127.0.0.1:${BACKEND_PORT}`,
         changeOrigin: true,
         secure: false,
       },
       // Real-time WebSocket / Socket.IO proxy
       '/socket.io': {
-        target: `http://localhost:${BACKEND_PORT}`,
+        target: `http://127.0.0.1:${BACKEND_PORT}`,
         changeOrigin: true,
         ws: true,
         secure: false,

@@ -16,14 +16,14 @@ const helmetMiddleware = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "blob:", "http://localhost:*", "http://127.0.0.1:*", "http://192.168.*:*", "http://10.*:*"],
-      connectSrc: ["'self'", "http://localhost:*", "http://127.0.0.1:*", "http://192.168.*:*", "http://10.*:*", "ws://localhost:*", "ws://127.0.0.1:*", "ws://192.168.*:*", "ws://10.*:*"],
-      // Allow framing for PDF/image previews in same origin iframes
-      frameAncestors: ["'self'", "http://localhost:*", "http://127.0.0.1:*", "http://192.168.*:*", "http://10.*:*"],
-      objectSrc: ["'none'"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+      imgSrc: ["'self'", "data:", "blob:", "http:", "https:"],
+      connectSrc: ["'self'", "http:", "https:", "ws:", "wss:"],
+      // Allow framing for PDF/image previews in same origin and network/LAN iframes
+      frameAncestors: ["'self'", "http://*", "https://*"],
+      objectSrc: ["'self'", "data:", "blob:"],
       upgradeInsecureRequests: process.env.NODE_ENV === "production" ? [] : null,
     },
   },
@@ -99,8 +99,8 @@ const apiLimiter = rateLimit({
 =========================================== */
 const pathHeadersMiddleware = (req, res, next) => {
   if (req.path.startsWith("/uploads")) {
-    // Allow iframes for PDF preview in portal
-    res.setHeader("Content-Security-Policy", "frame-ancestors 'self' http://localhost:* http://127.0.0.1:*");
+    // Allow iframes for PDF preview across localhost and LAN/WiFi network IPs
+    res.setHeader("Content-Security-Policy", "frame-ancestors 'self' http://* https://*");
     res.removeHeader("X-Frame-Options");
   } else {
     res.setHeader("X-Frame-Options", "SAMEORIGIN");
@@ -108,6 +108,16 @@ const pathHeadersMiddleware = (req, res, next) => {
 
   // Disable server fingerprinting
   res.removeHeader("X-Powered-By");
+
+  // Prevent back-button caching of authenticated screens
+  if (req.path.startsWith("/api/auth")) {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+  }
+
+  next();
+};
 
   // Extra: protect referrer on sensitive API paths
   if (req.path.startsWith("/api/auth")) {

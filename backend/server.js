@@ -105,8 +105,7 @@ app.use("/api", apiLimiter);
 const { getUploadBaseDir } = require("./utils/storagePath");
 app.use("/uploads", express.static(getUploadBaseDir(), {
   setHeaders: (res) => {
-    res.setHeader("Content-Security-Policy",
-      "frame-ancestors 'self' http://localhost:* http://127.0.0.1:*");
+    res.setHeader("Content-Security-Policy", "frame-ancestors 'self' http://* https://*");
     res.removeHeader("X-Frame-Options");
   },
 }));
