@@ -37,7 +37,7 @@ const categorySchema = new mongoose.Schema(
     section: {
       type: String,
       required: true,
-      enum: ["rnd", "professional"], // matches sections in CreditConfig
+      enum: ["teaching", "professional", "rnd", "research", "administrative"], // matches 4 PBAS sections
     },
     key: {
       type: String,

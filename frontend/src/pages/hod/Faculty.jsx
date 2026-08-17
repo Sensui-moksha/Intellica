@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, Search, CheckCircle, Loader2, UserCheck,
-  Clock, Plus, X, AlertTriangle, Building2, ShieldCheck, Check
+  Clock, Plus, X, AlertTriangle, Building2, ShieldCheck, Check, Calculator
 } from 'lucide-react';
-import { hodApi } from '../../api/services';
+import { hodApi, pbasApi } from '../../api/services';
 
 export default function HodFaculty() {
   const [approvedFaculty, setApprovedFaculty] = useState([]);
@@ -16,6 +16,7 @@ export default function HodFaculty() {
 
   // Department State
   const [hodDepartment, setHodDepartment]     = useState('');
+  const [pbasMap, setPbasMap]                 = useState({});
 
   // Add Faculty Modal State
   const [showAddModal, setShowAddModal]       = useState(false);
@@ -43,13 +44,21 @@ export default function HodFaculty() {
     Promise.all([
       hodApi.getFacultyList(),
       hodApi.getPendingFaculty(),
-      hodApi.getProfile()
-    ]).then(([appRes, pendRes, profRes]) => {
+      hodApi.getProfile(),
+      pbasApi.getDeptAppraisals('2025-26').catch(() => ({ data: [] }))
+    ]).then(([appRes, pendRes, profRes, pbasRes]) => {
       setApprovedFaculty(Array.isArray(appRes.data) ? appRes.data : appRes.data?.faculty || []);
       setPendingFaculty(Array.isArray(pendRes.data) ? pendRes.data : pendRes.data?.faculty || []);
       if (profRes.data?.department) {
         setHodDepartment(profRes.data.department);
       }
+      const pbasData = Array.isArray(pbasRes?.data) ? pbasRes.data : [];
+      const pMap = {};
+      pbasData.forEach(p => {
+        const fId = p.faculty?._id || p.faculty;
+        if (fId) pMap[fId] = p;
+      });
+      setPbasMap(pMap);
     }).catch(console.error).finally(() => setLoading(false));
   };
 
@@ -221,7 +230,7 @@ export default function HodFaculty() {
           <table className="w-full text-sm">
             <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e8edf5' }}>
               <tr>
-                {['Faculty Member', 'Employee ID', 'Designation', 'Total Credits', 'Approval Status', 'Actions'].map(h => (
+                {['Faculty Member', 'Employee ID', 'Designation', 'Total Credits', 'PBAS Score', 'Approval Status', 'Actions'].map(h => (
                   <th key={h} className="text-left px-5 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -245,6 +254,18 @@ export default function HodFaculty() {
                   <td className="px-5 py-4 text-slate-600 text-xs">{f.designation || 'Assistant Professor'}</td>
                   <td className="px-5 py-4 font-bold text-blue-600 text-xs">
                     {f.totalCredits || 0} <span className="text-[10px] text-slate-400 font-normal">pts</span>
+                  </td>
+                  <td className="px-5 py-4">
+                    {pbasMap[f._id]?.calculatedScores?.total !== undefined ? (
+                      <div className="flex flex-col">
+                        <span className="font-black text-indigo-700 text-xs">
+                          {pbasMap[f._id].calculatedScores.total.toFixed(1)} <span className="text-[10px] text-slate-400 font-normal">/ 1000</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-semibold">{pbasMap[f._id].academicYear}</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">Not submitted</span>
+                    )}
                   </td>
                   <td className="px-5 py-4">
                     <span className="text-xs font-bold px-2.5 py-1 rounded-full border inline-flex items-center gap-1"

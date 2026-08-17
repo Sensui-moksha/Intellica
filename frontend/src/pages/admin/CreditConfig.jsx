@@ -376,8 +376,10 @@ export default function CreditConfig() {
     return matchSearch && matchSec;
   });
 
-  const rndCount = categories.filter(c => c.section === 'rnd').length;
+  const teachingCount = categories.filter(c => c.section === 'teaching').length;
   const profCount = categories.filter(c => c.section === 'professional').length;
+  const rndCount = categories.filter(c => c.section === 'rnd' || c.section === 'research').length;
+  const adminCount = categories.filter(c => c.section === 'administrative').length;
   const totalSubcategories = categories.reduce((acc, c) => acc + (c.subcategories?.length || 0), 0);
   const avgCredits = categories.length
     ? Math.round(categories.reduce((acc, c) => acc + (c.creditPoints || 10), 0) / categories.length)
@@ -447,44 +449,54 @@ export default function CreditConfig() {
       </div>
 
       {/* Metrics Banner */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-            <Layers className="w-5 h-5" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+        <div className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold shrink-0">
+            <Layers className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-xl font-extrabold text-slate-900">{categories.length}</span>
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Categories</p>
+            <span className="text-lg font-black text-slate-900">{categories.length}</span>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">All Categories</p>
           </div>
         </div>
 
-        <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
-            <ListTree className="w-5 h-5" />
+        <div className="p-3.5 bg-white rounded-2xl border border-blue-200/70 shadow-xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0">
+            <GraduationCap className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-xl font-extrabold text-indigo-600">{totalSubcategories}</span>
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Active Subcategories</p>
+            <span className="text-lg font-black text-blue-700">{teachingCount}</span>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">I. Teaching</p>
           </div>
         </div>
 
-        <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-            <Briefcase className="w-5 h-5" />
+        <div className="p-3.5 bg-white rounded-2xl border border-violet-200/70 shadow-xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center font-bold shrink-0">
+            <Award className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-xl font-extrabold text-amber-600">{profCount} Prof / {rndCount} R&D</span>
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Distribution</p>
+            <span className="text-lg font-black text-violet-700">{profCount}</span>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">II. Professional</p>
           </div>
         </div>
 
-        <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-            <Coins className="w-5 h-5" />
+        <div className="p-3.5 bg-white rounded-2xl border border-indigo-200/70 shadow-xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold shrink-0">
+            <FlaskConical className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-xl font-extrabold text-emerald-600">~{avgCredits} pts</span>
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Avg Baseline</p>
+            <span className="text-lg font-black text-indigo-700">{rndCount}</span>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">III. Research (R&D)</p>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-white rounded-2xl border border-amber-200/70 shadow-xs flex items-center gap-3 col-span-2 sm:col-span-1">
+          <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
+            <Briefcase className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-lg font-black text-amber-700">{adminCount}</span>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">IV. Administrative</p>
           </div>
         </div>
       </div>
@@ -493,32 +505,50 @@ export default function CreditConfig() {
       <div className="flex items-center justify-between gap-3 flex-wrap bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
         
         {/* Section Tabs */}
-        <div className="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
+        <div className="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200/60 flex-wrap gap-1">
           <button
             onClick={() => setSectionFilter('ALL')}
-            className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-              sectionFilter === 'ALL' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              sectionFilter === 'ALL' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            All Categories ({categories.length})
+            All ({categories.length})
+          </button>
+          <button
+            onClick={() => setSectionFilter('teaching')}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              sectionFilter === 'teaching' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            I. Teaching ({teachingCount})
+          </button>
+          <button
+            onClick={() => setSectionFilter('professional')}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              sectionFilter === 'professional' ? 'bg-white text-violet-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-violet-500" />
+            II. Professional ({profCount})
           </button>
           <button
             onClick={() => setSectionFilter('rnd')}
-            className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
               sectionFilter === 'rnd' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <span className="w-2 h-2 rounded-full bg-indigo-500" />
-            R&D ({rndCount})
+            III. Research ({rndCount})
           </button>
           <button
-            onClick={() => setSectionFilter('professional')}
-            className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              sectionFilter === 'professional' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            onClick={() => setSectionFilter('administrative')}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              sectionFilter === 'administrative' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <span className="w-2 h-2 rounded-full bg-amber-500" />
-            Professional ({profCount})
+            IV. Admin ({adminCount})
           </button>
         </div>
 
@@ -646,14 +676,30 @@ export default function CreditConfig() {
 
                   {/* Section */}
                   <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider ${
-                      c.section === 'rnd'
-                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200/60'
-                        : 'bg-amber-50 text-amber-700 border border-amber-200/60'
-                    }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${c.section === 'rnd' ? 'bg-indigo-500' : 'bg-amber-500'}`} />
-                      {c.section === 'rnd' ? 'R&D / Research' : 'Professional'}
-                    </span>
+                    {c.section === 'teaching' && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/60">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        I. Teaching
+                      </span>
+                    )}
+                    {c.section === 'professional' && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider bg-violet-50 text-violet-700 border border-violet-200/60">
+                        <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                        II. Professional
+                      </span>
+                    )}
+                    {(c.section === 'rnd' || c.section === 'research') && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                        III. Research
+                      </span>
+                    )}
+                    {c.section === 'administrative' && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200/60">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        IV. Admin
+                      </span>
+                    )}
                   </td>
 
                   {/* Credit Points Inline Box */}
@@ -1045,15 +1091,17 @@ export default function CreditConfig() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Academic Section *</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">PBAS Section *</label>
                     <select
                       value={form.section}
                       onChange={e => setForm({ ...form, section: e.target.value })}
                       className="w-full px-3 py-2 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium text-slate-800"
                       style={{ borderColor: '#e2e8f0' }}
                     >
-                      <option value="rnd">R&D / Research</option>
-                      <option value="professional">Professional / Academic</option>
+                      <option value="teaching">I. Teaching, Learning & Evaluation</option>
+                      <option value="professional">II. Professional Development & Co-Curricular</option>
+                      <option value="rnd">III. Research & Academic Contributions (R&D)</option>
+                      <option value="administrative">IV. Administrative & Extension Activities</option>
                     </select>
                   </div>
                 </div>

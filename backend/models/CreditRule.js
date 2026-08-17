@@ -9,7 +9,7 @@ const creditRuleSchema = new mongoose.Schema(
     },
     section: {
       type: String,
-      enum: ["rnd", "professional"],
+      enum: ["teaching", "professional", "rnd", "research", "administrative"],
       default: "rnd"
     },
     ruleKey: {

@@ -126,6 +126,7 @@ app.use("/api/ranking",      rankingRoutes);
 app.use("/api/categories",   categoryRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/activities",   require("./routes/activityRoutes"));
+app.use("/api/pbas",         require("./routes/pbasRoutes"));
 
 /* ═══════════════════════════════════════════════════════════════════════════
    HEALTH CHECK

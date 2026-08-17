@@ -4,12 +4,13 @@ import {
   Target, Sparkles, AlertCircle, CheckCircle2,
   BookOpen, FileText, Send, Clock, ArrowRight,
   Calendar, Trophy, Award, Bookmark, ExternalLink,
-  Building2, Shield, MapPin, Users, TrendingUp, BarChart2
+  Building2, Shield, MapPin, Users, TrendingUp, BarChart2, Calculator
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { facultyApi, rankingApi, authApi, activityApi } from '../../api/services';
+import { facultyApi, rankingApi, authApi, activityApi, pbasApi } from '../../api/services';
 import { resolveProfileImageUrl } from '../../components/Header';
 import { subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
+import PBASAppraisalModal from '../../components/pbas/PBASAppraisalModal';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
 
@@ -28,6 +29,8 @@ export default function FacultyDashboard() {
   const [rankings, setRankings]     = useState([]);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading]       = useState(true);
+  const [showPBAS, setShowPBAS]     = useState(false);
+  const [pbasScore, setPbasScore]   = useState(null);
 
   const fetchAll = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
@@ -62,8 +65,21 @@ export default function FacultyDashboard() {
     }
   };
 
+  // Fetch PBAS score (separate from main fetch to avoid coupling)
+  const fetchPBASScore = async () => {
+    try {
+      const meRes = await authApi.getMe().catch(() => null);
+      const myId = meRes?.data?._id || meRes?.data?.id;
+      if (myId) {
+        const scoreRes = await pbasApi.getFacultyScore(myId).catch(() => null);
+        if (scoreRes?.data?.score) setPbasScore(scoreRes.data);
+      }
+    } catch (_) {}
+  };
+
   useEffect(() => {
     fetchAll(false);
+    fetchPBASScore();
 
     // Realtime subscriptions
     const unsubActivities = subscribeToRealtimeEvent(SYNC_EVENTS.ACTIVITIES_UPDATED, () => fetchAll(true));
@@ -320,6 +336,43 @@ export default function FacultyDashboard() {
           </motion.div>
         ))}
       </div>
+
+      {/* ── PBAS Appraisal Card ── */}
+      <motion.div
+        variants={itemVariants}
+        whileHover={{ y: -2 }}
+        onClick={() => setShowPBAS(true)}
+        className="bg-gradient-to-br from-indigo-50 via-white to-violet-50 rounded-3xl p-5 border border-indigo-200/60 flex items-center justify-between hover:shadow-md transition-all shadow-xs cursor-pointer group"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/25">
+            <Calculator className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-slate-900 group-hover:text-indigo-700 transition-colors">PBAS Appraisal</h3>
+            <p className="text-[10px] font-semibold text-slate-400">Performance Based Appraisal System • Score out of 1000</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {pbasScore?.score ? (
+            <div className="text-right">
+              <p className="text-lg font-black text-indigo-700 tabular-nums">{pbasScore.score.total?.toFixed(1) || '—'}<span className="text-xs font-bold text-slate-400"> / 1000</span></p>
+              <p className="text-[10px] font-bold text-slate-400">{pbasScore.academicYear} • {pbasScore.status}</p>
+            </div>
+          ) : (
+            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200/60">Start Appraisal →</span>
+          )}
+        </div>
+      </motion.div>
+
+      {/* PBAS Modal */}
+      <PBASAppraisalModal
+        isOpen={showPBAS}
+        onClose={() => { setShowPBAS(false); fetchPBASScore(); }}
+        facultyName={displayName}
+        designation={profile?.designation}
+        facultyId={profile?._id}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         

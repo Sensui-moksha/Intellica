@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Download, Plus, Search, Loader2, CheckCircle2,
   Clock, Trash2, Edit3, X, AlertTriangle, CheckSquare, Square,
-  Mail, User, RefreshCw, ShieldCheck, Crown
+  Mail, User, RefreshCw, ShieldCheck, Crown, Calculator
 } from 'lucide-react';
-import { adminApi } from '../../api/services';
+import { adminApi, pbasApi } from '../../api/services';
 
 export default function AdminFaculty() {
   const [searchParams] = useSearchParams();
@@ -23,6 +23,7 @@ export default function AdminFaculty() {
 
   // Selection for Multiple Delete
   const [selectedIds, setSelectedIds]       = useState([]);
+  const [pbasMap, setPbasMap]               = useState({});
 
   // Modals & Toasts
   const [showModal, setShowModal]           = useState(false);
@@ -58,7 +59,8 @@ export default function AdminFaculty() {
       adminApi.getAllFaculty(),
       adminApi.getPendingFaculty(),
       adminApi.getDepartments(),
-    ]).then(([allRes, pendRes, deptRes]) => {
+      pbasApi.getAllAppraisals('2025-26').catch(() => ({ data: [] }))
+    ]).then(([allRes, pendRes, deptRes, pbasRes]) => {
       const allData  = Array.isArray(allRes.data) ? allRes.data : allRes.data?.faculty || [];
       const pendData = Array.isArray(pendRes.data) ? pendRes.data : pendRes.data?.faculty || [];
       const depts    = Array.isArray(deptRes.data) ? deptRes.data : deptRes.data?.departments || [];
@@ -67,6 +69,14 @@ export default function AdminFaculty() {
       setPending(pendData);
       setDepartments(depts.map(d => typeof d === 'string' ? d : d.name));
       setSelectedIds([]);
+
+      const pbasData = Array.isArray(pbasRes?.data) ? pbasRes.data : [];
+      const pMap = {};
+      pbasData.forEach(p => {
+        const fId = p.faculty?._id || p.faculty;
+        if (fId) pMap[fId] = p;
+      });
+      setPbasMap(pMap);
     }).catch(err => {
       console.error(err);
       setErrorMsg('Failed to load faculty & staff directory.');
@@ -475,7 +485,7 @@ export default function AdminFaculty() {
                     )}
                   </button>
                 </th>
-                {['Staff Member', 'ID / Reg ID', 'Role', 'Department', 'Designation', 'Credits', 'Status', 'Actions'].map(h => (
+                {['Staff Member', 'ID / Reg ID', 'Role', 'Department', 'Designation', 'Credits', 'PBAS Score', 'Status', 'Actions'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -564,6 +574,20 @@ export default function AdminFaculty() {
                     {/* Credits */}
                     <td className="px-4 py-3.5 font-black text-blue-600 text-xs">
                       {f.totalCredits || 0} <span className="text-[10px] text-slate-400 font-normal">pts</span>
+                    </td>
+
+                    {/* PBAS Score */}
+                    <td className="px-4 py-3.5">
+                      {pbasMap[f._id]?.calculatedScores?.total !== undefined ? (
+                        <div className="flex flex-col">
+                          <span className="font-black text-indigo-700 text-xs">
+                            {pbasMap[f._id].calculatedScores.total.toFixed(1)} <span className="text-[10px] text-slate-400 font-normal">/ 1000</span>
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-semibold">{pbasMap[f._id].academicYear}</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">Not submitted</span>
+                      )}
                     </td>
 
                     {/* Status */}

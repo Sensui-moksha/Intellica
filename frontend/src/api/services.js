@@ -143,3 +143,18 @@ export const activityApi = {
   updateActivity:     (id, data)  => api.put(`/activities/${id}`, data),
   deleteActivity:     (id)        => api.delete(`/activities/${id}`),
 };
+
+/* ── PBAS APPRAISAL ── */
+export const pbasApi = {
+  getRules:           (role)      => api.get(`/pbas/rules/${role}`),
+  calculate:          (data)      => api.post('/pbas/calculate', data),
+  syncActivities:     (data)      => api.post('/pbas/sync-activities', data),
+  saveAppraisal:      (data)      => api.post('/pbas', data),
+  getMyAppraisal:     (year)      => api.get(`/pbas/my/${year}`),
+  submitAppraisal:    (id)        => api.put(`/pbas/${id}/submit`),
+  getFacultyScore:    (fId)       => api.get(`/pbas/faculty-score/${fId}`),
+  getForReview:       (fId, year) => api.get(`/pbas/review/${fId}/${year}`),
+  getDeptAppraisals:  (year)      => api.get(`/pbas/department/${year}`),
+  getAllAppraisals:    (year)      => api.get(`/pbas/all/${year}`),
+};
+

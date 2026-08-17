@@ -3,10 +3,10 @@ import { motion } from 'framer-motion';
 import {
   Award, Users, BarChart2, AlertCircle, Loader2,
   ShieldCheck, ArrowRight, Crown, Building2, Calendar,
-  Trophy, Clock, Bookmark, ExternalLink, Shield, MapPin
+  Trophy, Clock, Bookmark, ExternalLink, Shield, MapPin, Calculator
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { adminApi, rankingApi, authApi, activityApi } from '../../api/services';
+import { adminApi, rankingApi, authApi, activityApi, pbasApi } from '../../api/services';
 import { resolveProfileImageUrl } from '../../components/Header';
 import { subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
 
@@ -27,6 +27,7 @@ export default function AdminDashboard() {
   const [allUsers, setAllUsers]     = useState([]);
   const [pendingUploads, setPendingUploads] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [pbasCount, setPbasCount]   = useState(0);
   const [loading, setLoading]       = useState(true);
 
   const fetchData = async (isSilent = false) => {
@@ -39,8 +40,11 @@ export default function AdminDashboard() {
         adminApi.getAllUsers().catch(() => ({ data: [] })),
         adminApi.getPendingUploads().catch(() => ({ data: [] })),
         authApi.getMe().catch(() => null),
-        activityApi.getActivities().catch(() => ({ data: { activities: [] } }))
+        activityApi.getActivities().catch(() => ({ data: { activities: [] } })),
+        pbasApi.getAllAppraisals('2025-26').catch(() => ({ data: [] }))
       ]);
+      const pbasAppraisals = Array.isArray(pbasRes?.data) ? pbasRes.data : [];
+      setPbasCount(pbasAppraisals.length);
       setDepts(deptsRes.data?.departments || deptsRes.data || []);
       setRankings(rankRes.data?.rankings || rankRes.data || []);
       setStats(statsRes.data);
@@ -256,6 +260,36 @@ export default function AdminDashboard() {
           </motion.div>
         ))}
       </div>
+
+      {/* ── PBAS Appraisal Overview Card ── */}
+      <motion.div
+        variants={itemVariants}
+        whileHover={{ y: -2 }}
+        className="bg-gradient-to-br from-indigo-50 via-white to-violet-50 rounded-3xl p-5 border border-indigo-200/60 flex items-center justify-between hover:shadow-md transition-all shadow-xs group"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/25">
+            <Calculator className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-slate-900 group-hover:text-indigo-700 transition-colors">PBAS Appraisal System</h3>
+            <p className="text-[10px] font-semibold text-slate-400">Performance Based Appraisal System • College-wide Faculty Scores</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <p className="text-lg font-black text-indigo-700 tabular-nums">{pbasCount} <span className="text-xs font-bold text-slate-400">Submissions</span></p>
+            <p className="text-[10px] font-bold text-slate-400">Academic Year 2025-26</p>
+          </div>
+          <Link
+            to="/admin/faculty"
+            className="flex items-center gap-1 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3.5 py-2 rounded-xl border border-indigo-200/60 transition-colors"
+          >
+            <span>View Faculty Scores</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      </motion.div>
 
       {/* Leaderboards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

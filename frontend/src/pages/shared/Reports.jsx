@@ -6,11 +6,12 @@ import {
   ChevronRight, ArrowLeft, ExternalLink, BookOpen, Clock,
   Wrench, Mic, Coins, Building, Bookmark, CheckCircle2,
   AlertCircle, ShieldCheck, Mail, Briefcase, GraduationCap,
-  Eye, FileCheck, Search, X, Layers
+  Eye, FileCheck, Search, X, Layers, Calculator
 } from 'lucide-react';
-import { reportApi, authApi } from '../../api/services';
+import { reportApi, authApi, pbasApi } from '../../api/services';
 import { resolveProfileImageUrl, getDocumentUrl } from '../../components/Header';
 import { subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
+import PBASAppraisalModal from '../../components/pbas/PBASAppraisalModal';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
 
@@ -21,6 +22,9 @@ export default function ReportsAndAnalytics() {
   const [selectedFacultyId, setSelectedFacultyId] = useState(null);
   const [portfolioData, setPortfolioData]     = useState(null);
   const [loadingPortfolio, setLoadingPortfolio] = useState(false);
+  const [currentFacultyPBAS, setCurrentFacultyPBAS] = useState(null);
+  const [showPBASModal, setShowPBASModal]     = useState(false);
+  const [pbasMap, setPbasMap]                 = useState({});
   const [searchQuery, setSearchQuery]         = useState('');
   const [activeWorkTab, setActiveWorkTab]     = useState('ALL');
 
@@ -30,12 +34,22 @@ export default function ReportsAndAnalytics() {
   const loadAnalytics = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
-      const res = await reportApi.getAnalytics();
+      const [res, pbasRes] = await Promise.all([
+        reportApi.getAnalytics(),
+        pbasApi.getAllAppraisals('2025-26').catch(() => ({ data: [] }))
+      ]);
       setData(res.data || { departments: [], role });
       // If HOD, automatically select their single department
       if (res.data?.departments?.length === 1 && !selectedDept) {
         setSelectedDept(res.data.departments[0]);
       }
+      const pbasData = Array.isArray(pbasRes?.data) ? pbasRes.data : [];
+      const pMap = {};
+      pbasData.forEach(p => {
+        const fId = p.faculty?._id || p.faculty;
+        if (fId) pMap[fId] = p;
+      });
+      setPbasMap(pMap);
     } catch (err) {
       console.error('Analytics load error:', err);
     } finally {
@@ -60,9 +74,23 @@ export default function ReportsAndAnalytics() {
     setSelectedFacultyId(facultyId);
     setLoadingPortfolio(true);
     setPortfolioData(null);
+    setCurrentFacultyPBAS(null);
     try {
-      const res = await reportApi.getFacultyPortfolio(facultyId);
+      const [res, scoreRes] = await Promise.all([
+        reportApi.getFacultyPortfolio(facultyId),
+        pbasApi.getFacultyScore(facultyId).catch(() => null)
+      ]);
       setPortfolioData(res.data);
+      if (scoreRes?.data?.score) {
+        setCurrentFacultyPBAS(scoreRes.data);
+      } else if (pbasMap[facultyId]) {
+        setCurrentFacultyPBAS({
+          score: pbasMap[facultyId].calculatedScores,
+          academicYear: pbasMap[facultyId].academicYear,
+          role: pbasMap[facultyId].role,
+          status: pbasMap[facultyId].status
+        });
+      }
     } catch (err) {
       console.error('Portfolio load error:', err);
     } finally {
@@ -73,6 +101,7 @@ export default function ReportsAndAnalytics() {
   const handleClosePortfolio = () => {
     setSelectedFacultyId(null);
     setPortfolioData(null);
+    setCurrentFacultyPBAS(null);
     setActiveWorkTab('ALL');
   };
 
@@ -390,10 +419,15 @@ export default function ReportsAndAnalytics() {
                     </div>
 
                     {/* Quick Works Stats Pill */}
-                    <div className="flex items-center gap-2 text-[10px] font-bold p-2.5 bg-slate-50 rounded-2xl text-slate-600 justify-around">
+                    <div className="flex items-center gap-2 text-[10px] font-bold p-2.5 bg-slate-50 rounded-2xl text-slate-600 justify-around flex-wrap">
                       <span>📖 {member.stats?.books || 0} Books</span>
                       <span>📄 {member.stats?.publications || 0} Papers</span>
                       <span>🏛️ {member.stats?.conferences || 0} Confs</span>
+                      {pbasMap[member._id]?.calculatedScores?.total !== undefined && (
+                        <span className="text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100 font-black">
+                          📊 PBAS: {pbasMap[member._id].calculatedScores.total.toFixed(0)}/1000
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -524,6 +558,136 @@ export default function ReportsAndAnalytics() {
                         </div>
                       </div>
                     </div>
+
+                    {/* ── PBAS APPRAISAL SCORE CARD ── */}
+                    <div className="bg-gradient-to-br from-indigo-50/90 via-white to-violet-50/60 rounded-3xl p-5 border border-indigo-200/90 shadow-xs space-y-4">
+                      <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-indigo-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/25 shrink-0">
+                            <Calculator className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-xs font-black text-slate-900">Performance Based Appraisal System (PBAS)</h4>
+                              {currentFacultyPBAS?.status && (
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                                  currentFacultyPBAS.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' :
+                                  currentFacultyPBAS.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-800' :
+                                  'bg-amber-100 text-amber-800'
+                                }`}>
+                                  {currentFacultyPBAS.status}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                              AY {currentFacultyPBAS?.academicYear || '2025-26'} • PBAS Role: <span className="font-bold text-slate-700">{currentFacultyPBAS?.role ? currentFacultyPBAS.role.replace(/_/g, ' ') : (portfolioData.user?.designation || 'Faculty Member')}</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        {currentFacultyPBAS?.score?.total !== undefined ? (
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <span className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider block">Total PBAS Score</span>
+                              <span className="text-xl font-black text-indigo-950 tabular-nums">
+                                {currentFacultyPBAS.score.total.toFixed(1)} <span className="text-xs font-bold text-slate-400">/ 1000 pts</span>
+                              </span>
+                            </div>
+                            <div className="px-3 py-1.5 bg-indigo-600 text-white font-black text-xs rounded-xl shadow-xs">
+                              {((currentFacultyPBAS.score.total / 1000) * 100).toFixed(1)}%
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="px-3 py-1.5 bg-slate-100 text-slate-500 text-xs font-semibold rounded-xl border border-slate-200">
+                            Appraisal Pending / Not Started
+                          </span>
+                        )}
+                      </div>
+
+                      {/* 4 Section Breakdown Grid & Actions */}
+                      {currentFacultyPBAS?.score ? (
+                        <>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                            <div className="p-3 bg-white border border-blue-100 rounded-2xl space-y-1 shadow-2xs">
+                              <span className="text-[10px] font-bold text-blue-600 block">I. Teaching</span>
+                              <p className="text-base font-black text-slate-900 tabular-nums">{currentFacultyPBAS.score.teaching?.toFixed(1) || '0.0'} <span className="text-[10px] text-slate-400 font-normal">pts</span></p>
+                            </div>
+                            <div className="p-3 bg-white border border-violet-100 rounded-2xl space-y-1 shadow-2xs">
+                              <span className="text-[10px] font-bold text-violet-600 block">II. Professional</span>
+                              <p className="text-base font-black text-slate-900 tabular-nums">{currentFacultyPBAS.score.professional?.toFixed(1) || '0.0'} <span className="text-[10px] text-slate-400 font-normal">pts</span></p>
+                            </div>
+                            <div className="p-3 bg-white border border-emerald-100 rounded-2xl space-y-1 shadow-2xs">
+                              <span className="text-[10px] font-bold text-emerald-600 block">III. Research</span>
+                              <p className="text-base font-black text-slate-900 tabular-nums">{currentFacultyPBAS.score.research?.toFixed(1) || '0.0'} <span className="text-[10px] text-slate-400 font-normal">pts</span></p>
+                            </div>
+                            <div className="p-3 bg-white border border-amber-100 rounded-2xl space-y-1 shadow-2xs">
+                              <span className="text-[10px] font-bold text-amber-600 block">IV. Administrative</span>
+                              <p className="text-base font-black text-slate-900 tabular-nums">{currentFacultyPBAS.score.administrative?.toFixed(1) || '0.0'} <span className="text-[10px] text-slate-400 font-normal">pts</span></p>
+                            </div>
+                          </div>
+
+                          {/* Progress Bar */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                              <span>Overall PBAS Performance</span>
+                              <span className="text-indigo-700 font-black">{currentFacultyPBAS.score.total?.toFixed(1)} / 1000 pts ({((currentFacultyPBAS.score.total / 1000) * 100).toFixed(1)}%)</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-slate-200/80 overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-500"
+                                style={{ width: `${Math.min((currentFacultyPBAS.score.total / 1000) * 100, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="pt-2 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setShowPBASModal(true)}
+                              className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition-all cursor-pointer"
+                            >
+                              <Calculator className="w-3.5 h-3.5" />
+                              <span>Open / Recalculate PBAS Form</span>
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="p-4 bg-white border border-dashed border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+                          <div>
+                            <p className="text-xs font-bold text-slate-700">
+                              No PBAS appraisal has been recorded for AY 2025-26 yet.
+                            </p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              You can initialize or evaluate this faculty member's PBAS appraisal now.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowPBASModal(true)}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition-all cursor-pointer shrink-0"
+                          >
+                            <Calculator className="w-3.5 h-3.5" />
+                            <span>Evaluate / Open PBAS Form</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* PBAS Appraisal Modal */}
+                    <PBASAppraisalModal
+                      isOpen={showPBASModal}
+                      onClose={() => {
+                        setShowPBASModal(false);
+                        if (selectedFacultyId) {
+                          pbasApi.getFacultyScore(selectedFacultyId).then(res => {
+                            if (res.data?.score) setCurrentFacultyPBAS(res.data);
+                          }).catch(() => {});
+                        }
+                      }}
+                      facultyName={portfolioData.user?.name}
+                      designation={portfolioData.user?.designation}
+                      facultyId={selectedFacultyId}
+                    />
 
                     {/* ── CATEGORIZED WORK CARDS (BOOKS, JOURNALS, CONFERENCES, ETC.) ── */}
                     <div className="space-y-4">
