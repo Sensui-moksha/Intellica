@@ -1,5 +1,5 @@
 # System Role & Objective
-Build a premium, enterprise-grade React web application for "Intellica", an academic Faculty Research Management System. The application manages research document uploads, institutional credits, and intelligent rankings across three distinct roles: Admin, HOD (Head of Department), and Faculty.
+Build a premium, enterprise-grade React web application for "Intellica", an academic Faculty Research Insights Portal. The application manages research document uploads, institutional credits, and intelligent rankings across three distinct roles: Admin, HOD (Head of Department), and Faculty.
 
 # Design Aesthetics & Tech Stack
 
