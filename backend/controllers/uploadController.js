@@ -2,8 +2,10 @@ const Upload = require("../models/Upload");
 const Category = require("../models/Category");
 const calculateCredits = require("../services/creditCalculator");
 const path = require("path");
+const fs = require("fs");
 const { getUploadBaseDir } = require("../utils/storagePath");
 const Notification = require("../models/Notification");
+
 
 
 exports.createUpload = async (req, res) => {
@@ -115,8 +117,8 @@ if (req.user.role === "FACULTY") {
 res.status(201).json({ message:"Upload submitted successfully", upload });
 
 }catch(err){
-console.error(err);
-res.status(500).json({ message:"Upload failed" });
+  console.error("CREATE UPLOAD ERROR:", err);
+  res.status(500).json({ message: err.message || "Upload failed" });
 }
 };
 
@@ -205,8 +207,8 @@ if(req.files && req.files.length>0){
 await uploadDoc.save();
 res.json({ message:"Upload updated and resubmitted for review successfully", upload: uploadDoc });
 }catch(err){
-console.error(err);
-res.status(500).json({ message:"Update failed" });
+  console.error("UPDATE UPLOAD ERROR:", err);
+  res.status(500).json({ message: err.message || "Update failed" });
 }
 };
 
