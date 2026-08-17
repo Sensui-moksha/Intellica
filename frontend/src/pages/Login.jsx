@@ -8,7 +8,7 @@ import {
   ArrowRight, ArrowLeft, CheckCircle2, RotateCcw,
   Sparkles, AlertCircle
 } from 'lucide-react';
-import micEmblem from '../assets/mic_emblem.png';
+import micLogo from '../assets/mic_logo.png';
 
 export default function Login() {
   const [identifier, setIdentifier]       = useState(localStorage.getItem('last_login_identifier') || '');
@@ -367,8 +367,8 @@ export default function Login() {
       >
         {/* Brand Logo & Header */}
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-200/80 p-2 flex items-center justify-center mb-3 shadow-sm">
-            <img src={micEmblem} alt="MIC College of Technology" className="w-full h-full object-contain" />
+          <div className="w-full max-w-[320px] px-2 py-1.5 mb-2.5 flex items-center justify-center">
+            <img src={micLogo} alt="DVR & Dr. HS MIC College of Technology" className="w-full h-auto max-h-16 object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Intellica</h1>
           <p className="text-xs font-medium text-slate-500 mt-0.5">Faculty Research Management System</p>
