@@ -6,6 +6,7 @@ import {
   Calendar, Maximize2, Minimize2, ExternalLink, Building2
 } from 'lucide-react';
 import { adminApi } from '../../api/services';
+import { emitRealtimeEvent, subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5001';
 
@@ -44,8 +45,8 @@ export default function AdminApprovals() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isDocFullscreen]);
 
-  const loadAllData = async () => {
-    setLoading(true);
+  const loadAllData = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     try {
       const [pendingRes, approvedRes, rejectedRes, deptsRes] = await Promise.all([
         adminApi.getPendingUploads(),
@@ -64,22 +65,44 @@ export default function AdminApprovals() {
       setRejectedQueue(rList);
       setDepartments(dList.map(d => typeof d === 'string' ? d : d.name));
 
-      // Auto-select first item of current tab
+      // Auto-select or preserve current selection of current tab
       const currentList = activeTab === 'PENDING' ? pList : activeTab === 'APPROVED' ? aList : rList;
       const initialFiltered = selectedDept === 'ALL'
         ? currentList
         : currentList.filter(item => (item.department || item.faculty?.department || '').toUpperCase() === selectedDept.toUpperCase());
-      setSelected(initialFiltered[0] || null);
+
+      setSelected(prev => {
+        if (prev && initialFiltered.some(item => item._id === prev._id)) {
+          return initialFiltered.find(item => item._id === prev._id);
+        }
+        return initialFiltered[0] || null;
+      });
     } catch (err) {
       console.error('Failed to load approvals:', err);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadAllData();
-  }, []);
+    loadAllData(true);
+
+    // Live background polling every 5s + window focus + broadcast sync
+    const interval = setInterval(() => loadAllData(false), 5000);
+    const handleSync = () => loadAllData(false);
+
+    const unsubBroadcast = subscribeToRealtimeEvent(SYNC_EVENTS.APPROVALS_UPDATED, handleSync);
+
+    window.addEventListener('focus', handleSync);
+    window.addEventListener('approvalsUpdated', handleSync);
+
+    return () => {
+      clearInterval(interval);
+      unsubBroadcast();
+      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('approvalsUpdated', handleSync);
+    };
+  }, [activeTab, selectedDept]);
 
   // When switching tabs, update selection
   const handleTabChange = (tab) => {
@@ -125,7 +148,14 @@ export default function AdminApprovals() {
 
       setActionType(null);
       setActionComment('');
-      await loadAllData();
+
+      // Dispatch global events for instant real-time sync across other tabs & components
+      emitRealtimeEvent(SYNC_EVENTS.APPROVALS_UPDATED);
+      emitRealtimeEvent(SYNC_EVENTS.NOTIFICATIONS_UPDATED);
+      window.dispatchEvent(new CustomEvent('approvalsUpdated'));
+      window.dispatchEvent(new CustomEvent('notificationUpdated'));
+
+      await loadAllData(false);
     } catch (err) {
       console.error(err);
     } finally {

@@ -124,6 +124,7 @@ export const rankingApi = {
 export const notificationApi = {
   getAll:             ()          => api.get('/notifications'),
   markAsRead:         (id)        => api.put(`/notifications/${id}/read`),
+  markAllAsRead:      ()          => api.put('/notifications/read-all'),
 };
 
 /* ── REPORTS & ANALYTICS ── */

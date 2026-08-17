@@ -5,6 +5,7 @@ import {
   FileText, Hash, Building2, Send, ListTree, Coins, Layers
 } from 'lucide-react';
 import { categoriesApi, facultyApi } from '../../api/services';
+import { emitRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
 
 export default function FacultyUpload() {
   const [categories, setCategories] = useState([]);
@@ -164,6 +165,13 @@ export default function FacultyUpload() {
     try {
       await facultyApi.createUpload(formData.category, data);
       setSuccess(true);
+
+      // Dispatch global sync events for instant real-time updates across open tabs & notification bell
+      emitRealtimeEvent(SYNC_EVENTS.APPROVALS_UPDATED);
+      emitRealtimeEvent(SYNC_EVENTS.NOTIFICATIONS_UPDATED);
+      window.dispatchEvent(new CustomEvent('approvalsUpdated'));
+      window.dispatchEvent(new CustomEvent('notificationUpdated'));
+
       setFormData({
         category: categories[0]?.name || 'Book',
         subcategory: categories[0]?.subcategories?.[0]?.name || '',

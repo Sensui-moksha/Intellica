@@ -8,6 +8,7 @@ import {
   Search, RotateCcw
 } from 'lucide-react';
 import { facultyApi } from '../../api/services';
+import { emitRealtimeEvent, subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
 
 const STATUS_STYLES = {
   ADMIN_APPROVED:   { color: '#065f46', bg: '#d1fae5', border: '#a7f3d0', label: 'Accepted (Credits Awarded)' },
@@ -73,7 +74,8 @@ export default function MyActivities() {
   // Fullscreen Preview State
   const [fullscreenDoc, setFullscreenDoc] = useState(null);
 
-  const loadActivities = async () => {
+  const loadActivities = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     try {
       const res = await facultyApi.getMyUploads();
       const list = Array.isArray(res.data) ? res.data : res.data?.uploads || [];
@@ -84,12 +86,28 @@ export default function MyActivities() {
     } catch (err) {
       console.error('Failed to load activities:', err);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadActivities();
+    loadActivities(true);
+
+    // Live background polling every 5s + window focus + broadcast sync
+    const interval = setInterval(() => loadActivities(false), 5000);
+    const handleSync = () => loadActivities(false);
+
+    const unsubBroadcast = subscribeToRealtimeEvent(SYNC_EVENTS.APPROVALS_UPDATED, handleSync);
+
+    window.addEventListener('focus', handleSync);
+    window.addEventListener('approvalsUpdated', handleSync);
+
+    return () => {
+      clearInterval(interval);
+      unsubBroadcast();
+      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('approvalsUpdated', handleSync);
+    };
   }, []);
 
   const getDocumentUrl = (filePath) => {
@@ -160,11 +178,18 @@ export default function MyActivities() {
           ? 'Reapproval request submitted! Forwarded to HOD for review, then Admin.'
           : 'Reapproval request submitted! Forwarded to Admin for review.'
       );
+
+      // Dispatch global sync events for instant real-time sync across other tabs & components
+      emitRealtimeEvent(SYNC_EVENTS.APPROVALS_UPDATED);
+      emitRealtimeEvent(SYNC_EVENTS.NOTIFICATIONS_UPDATED);
+      window.dispatchEvent(new CustomEvent('approvalsUpdated'));
+      window.dispatchEvent(new CustomEvent('notificationUpdated'));
+
       setTimeout(() => {
         setEditingItem(null);
         setSuccessMsg('');
       }, 1800);
-      await loadActivities();
+      await loadActivities(false);
     } catch (err) {
       setErrorMsg(err.response?.data?.message || 'Failed to submit reapproval request. Please try again.');
     } finally {

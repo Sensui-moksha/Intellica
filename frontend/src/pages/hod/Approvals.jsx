@@ -6,6 +6,7 @@ import {
   Calendar, Maximize2, Minimize2, ExternalLink
 } from 'lucide-react';
 import { hodApi } from '../../api/services';
+import { emitRealtimeEvent, subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
 
 export default function HodApprovals() {
   const [activeTab, setActiveTab] = useState('PENDING'); // 'PENDING' | 'APPROVED' | 'REJECTED'
@@ -39,8 +40,8 @@ export default function HodApprovals() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isDocFullscreen]);
 
-  const loadAllData = async () => {
-    setLoading(true);
+  const loadAllData = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     try {
       const [pendingRes, approvedRes, rejectedRes] = await Promise.all([
         hodApi.getPendingUploads(),
@@ -56,19 +57,39 @@ export default function HodApprovals() {
       setApprovedQueue(aList);
       setRejectedQueue(rList);
 
-      if (activeTab === 'PENDING') setSelected(pList[0] || null);
-      else if (activeTab === 'APPROVED') setSelected(aList[0] || null);
-      else if (activeTab === 'REJECTED') setSelected(rList[0] || null);
+      setSelected(prev => {
+        const curList = activeTab === 'PENDING' ? pList : activeTab === 'APPROVED' ? aList : rList;
+        if (prev && curList.some(item => item._id === prev._id)) {
+          return curList.find(item => item._id === prev._id);
+        }
+        return curList[0] || null;
+      });
     } catch (err) {
       console.error('Failed to load approvals:', err);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadAllData();
-  }, []);
+    loadAllData(true);
+
+    // Live background soft-refresh every 5s + window focus + broadcast sync
+    const interval = setInterval(() => loadAllData(false), 5000);
+    const handleSync = () => loadAllData(false);
+
+    const unsubBroadcast = subscribeToRealtimeEvent(SYNC_EVENTS.APPROVALS_UPDATED, handleSync);
+
+    window.addEventListener('focus', handleSync);
+    window.addEventListener('approvalsUpdated', handleSync);
+
+    return () => {
+      clearInterval(interval);
+      unsubBroadcast();
+      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('approvalsUpdated', handleSync);
+    };
+  }, [activeTab]);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -94,7 +115,14 @@ export default function HodApprovals() {
 
       setActionType(null);
       setActionComment('');
-      await loadAllData();
+
+      // Dispatch global events across tabs & components
+      emitRealtimeEvent(SYNC_EVENTS.APPROVALS_UPDATED);
+      emitRealtimeEvent(SYNC_EVENTS.NOTIFICATIONS_UPDATED);
+      window.dispatchEvent(new CustomEvent('approvalsUpdated'));
+      window.dispatchEvent(new CustomEvent('notificationUpdated'));
+
+      await loadAllData(false);
     } catch (err) {
       console.error(err);
     } finally {

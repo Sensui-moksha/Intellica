@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { notificationApi, authApi, hodApi, facultyApi } from '../api/services';
+import { subscribeToRealtimeEvent, SYNC_EVENTS } from '../utils/syncEvents';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
 
@@ -66,13 +67,36 @@ export default function Header() {
     loadNotifications();
     fetchProfile();
 
+    // 1. Live Background Polling every 4 seconds
+    const intervalId = setInterval(loadNotifications, 4000);
+
+    // 2. Real-time focus & event sync
     const handleProfileUpdate = () => {
       fetchProfile();
       setImgError(false);
     };
 
+    const handleSyncEvent = () => {
+      loadNotifications();
+    };
+
+    const unsubNotif = subscribeToRealtimeEvent(SYNC_EVENTS.NOTIFICATIONS_UPDATED, handleSyncEvent);
+    const unsubApp = subscribeToRealtimeEvent(SYNC_EVENTS.APPROVALS_UPDATED, handleSyncEvent);
+
+    window.addEventListener('focus', handleSyncEvent);
+    window.addEventListener('notificationUpdated', handleSyncEvent);
+    window.addEventListener('approvalsUpdated', handleSyncEvent);
     window.addEventListener('profileUpdated', handleProfileUpdate);
-    return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
+
+    return () => {
+      clearInterval(intervalId);
+      unsubNotif();
+      unsubApp();
+      window.removeEventListener('focus', handleSyncEvent);
+      window.removeEventListener('notificationUpdated', handleSyncEvent);
+      window.removeEventListener('approvalsUpdated', handleSyncEvent);
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
   }, []);
 
   // Close dropdowns on outside click
@@ -93,11 +117,30 @@ export default function Header() {
 
   const handleMarkAsRead = async (id) => {
     try {
-      await notificationApi.markAsRead(id);
       setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true, read: true } : n));
+      await notificationApi.markAsRead(id);
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true, read: true })));
+      await notificationApi.markAllAsRead();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const formatNotifTime = (dateStr) => {
+    if (!dateStr) return 'Recent';
+    const d = new Date(dateStr);
+    const diffSec = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (diffSec < 60) return 'Just now';
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
 
   const displayName = profileData?.name || userName;
@@ -141,11 +184,12 @@ export default function Header() {
           <button
             onClick={() => { setShowNotifications(!showNotifications); setShowProfileMenu(false); }}
             className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors relative cursor-pointer"
+            title="Notifications"
           >
             <Bell className="w-4.5 h-4.5" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-blue-600 text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
-                {unreadCount}
+              <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-rose-500 text-white rounded-full text-[9px] font-black flex items-center justify-center shadow-xs animate-pulse">
+                {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
           </button>
@@ -158,30 +202,61 @@ export default function Header() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 6, scale: 0.97 }}
                 transition={{ duration: 0.18, ease: [0.21, 0.47, 0.32, 0.98] }}
-                className="absolute right-0 mt-2 w-80 bg-white rounded-3xl shadow-xl border border-slate-200 p-4 space-y-3 z-50"
+                className="absolute right-0 mt-2 w-88 bg-white rounded-3xl shadow-2xl border p-4 space-y-3 z-50"
+                style={{ borderColor: '#e2e8f0' }}
               >
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <span className="text-xs font-black text-slate-900">Notifications</span>
-                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
-                    {unreadCount} New
-                  </span>
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-slate-900">Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
+                        {unreadCount} Unread
+                      </span>
+                    )}
+                  </div>
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleMarkAllRead}
+                      className="text-[10px] font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                    >
+                      Mark all read
+                    </button>
+                  )}
                 </div>
 
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                   {notifications.length > 0 ? (
-                    notifications.map(n => (
-                      <div
-                        key={n._id}
-                        onClick={() => handleMarkAsRead(n._id)}
-                        className="p-2.5 rounded-2xl bg-slate-50 hover:bg-blue-50/50 transition-colors text-xs space-y-0.5 cursor-pointer"
-                      >
-                        <p className="font-bold text-slate-900 text-[11px]">{n.title || 'Department Update'}</p>
-                        <p className="text-[10px] text-slate-500">{n.message}</p>
-                      </div>
-                    ))
+                    notifications.map(n => {
+                      const isUnread = !n.isRead && !n.read;
+                      return (
+                        <div
+                          key={n._id}
+                          onClick={() => handleMarkAsRead(n._id)}
+                          className={`p-3 rounded-2xl transition-all text-xs space-y-1 cursor-pointer border ${
+                            isUnread
+                              ? 'bg-blue-50/60 border-blue-200/80 hover:bg-blue-50'
+                              : 'bg-slate-50 border-slate-100 hover:bg-slate-100/70 text-slate-600'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className={`text-[11px] leading-tight ${isUnread ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
+                              {n.message}
+                            </p>
+                            {isUnread && (
+                              <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0 mt-1" />
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-400 font-medium">
+                            {formatNotifTime(n.createdAt)}
+                          </p>
+                        </div>
+                      );
+                    })
                   ) : (
-                    <div className="py-6 text-center text-slate-400 text-xs">
-                      <p className="font-bold text-slate-600">No new notifications</p>
+                    <div className="py-8 text-center text-slate-400 text-xs">
+                      <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="font-bold text-slate-600">No notifications</p>
                       <p className="text-[10px] text-slate-400 mt-0.5">You're all caught up!</p>
                     </div>
                   )}
