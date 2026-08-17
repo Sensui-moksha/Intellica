@@ -2,7 +2,9 @@ const DepartmentActivity = require("../models/DepartmentActivity");
 const HOD = require("../models/HOD");
 const Faculty = require("../models/Faculty");
 const User = require("../models/User");
+const Notification = require("../models/Notification");
 const { sendActivityEmailToHODs, sendActivityEmailToFaculty } = require("../utils/emailService");
+const { emitToRole, emitToDepartment, broadcastEvent } = require("../utils/socket");
 
 /* =====================================================
    GET ACTIVITIES (ROLE & AUDIENCE FILTERED)
@@ -129,10 +131,26 @@ exports.createActivity = async (req, res) => {
 
     await newActivity.save();
 
-    // ── Fire email notifications (non-blocking) ──
+    const actDate = new Date(date);
+    const formattedDate = actDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    // ── Fire in-app & email notifications (non-blocking) ──
     const savedActivity = newActivity.toObject();
     if (role === "ADMIN") {
-      // Admin created → notify ALL approved HODs via email
+      // Admin created → notify ALL approved HODs
+
+      // 1. In-app notification for all HODs
+      Notification.create({
+        message: `Institutional Activity: "${title}" scheduled on ${formattedDate} (${time || '10:00 AM'}) at ${venue || 'Council Hall'}. Scheduled by ${creatorName}.`,
+        role: "HOD",
+        type: "GENERAL"
+      }).then(notif => {
+        if (notif) emitToRole("HOD", "notification:new", notif);
+      }).catch(err => console.error("[NOTIF] Failed to create HOD in-app notification:", err.message));
+
+      broadcastEvent("sync:activities", { action: "ACTIVITY_CREATED", id: newActivity._id });
+
+      // 2. Email notification to all HODs
       Promise.resolve().then(async () => {
         try {
           const hods = await HOD.find({ isApproved: true, status: "APPROVED" }).select("name email department").lean();
@@ -145,7 +163,21 @@ exports.createActivity = async (req, res) => {
         }
       });
     } else if (role === "HOD") {
-      // HOD created → notify ALL approved Faculty in that department via email
+      // HOD created → notify ALL approved Faculty in that department
+
+      // 1. In-app notification for department Faculty
+      Notification.create({
+        message: `Department Activity: "${title}" scheduled on ${formattedDate} (${time || '10:00 AM'}) at ${venue || 'Department Conference Room'}. Scheduled by HOD (${creatorName}).`,
+        role: "FACULTY",
+        department: targetDept,
+        type: "GENERAL"
+      }).then(notif => {
+        if (notif) emitToDepartment(targetDept, "notification:new", notif);
+      }).catch(err => console.error("[NOTIF] Failed to create Faculty in-app notification:", err.message));
+
+      broadcastEvent("sync:activities", { action: "ACTIVITY_CREATED", id: newActivity._id });
+
+      // 2. Email notification to department Faculty
       Promise.resolve().then(async () => {
         try {
           const facultyList = await Faculty.find({

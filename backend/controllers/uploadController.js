@@ -1,11 +1,13 @@
 const Upload = require("../models/Upload");
 const Category = require("../models/Category");
+const Faculty = require("../models/Faculty");
 const calculateCredits = require("../services/creditCalculator");
 const path = require("path");
 const fs = require("fs");
 const { getUploadBaseDir } = require("../utils/storagePath");
 const Notification = require("../models/Notification");
 const { emitToRole, emitToUser, broadcastEvent } = require("../utils/socket");
+const { sendFacultyNotificationEmail } = require("../utils/emailService");
 
 
 
@@ -282,6 +284,14 @@ await uploadDoc.save();
 
     broadcastEvent("sync:approvals", { action: "HOD_APPROVED", id: uploadDoc._id });
 
+    // Email faculty about HOD approval (non-blocking)
+    Promise.resolve().then(async () => {
+      try {
+        const fac = await Faculty.findById(uploadDoc.faculty).select('name email').lean();
+        if (fac) await sendFacultyNotificationEmail(fac, uploadDoc.title, 'HOD_APPROVED', `HOD (${req.user.name || 'HOD'})`);
+      } catch (e) { console.error('[EMAIL] HOD approval notification failed:', e.message); }
+    });
+
     res.json({ message:"Approved by HOD" });
 
   }catch(err){
@@ -319,6 +329,14 @@ exports.rejectUploadByHOD = async (req, res) => {
     emitToUser(uploadDoc.faculty, "approvals:update", { action: "HOD_REJECTED", upload: uploadDoc });
 
     broadcastEvent("sync:approvals", { action: "HOD_REJECTED", id: uploadDoc._id });
+
+    // Email faculty about HOD rejection (non-blocking)
+    Promise.resolve().then(async () => {
+      try {
+        const fac = await Faculty.findById(uploadDoc.faculty).select('name email').lean();
+        if (fac) await sendFacultyNotificationEmail(fac, uploadDoc.title, 'REJECTED', `HOD (${req.user.name || 'HOD'})`, uploadDoc.hodComment);
+      } catch (e) { console.error('[EMAIL] HOD rejection notification failed:', e.message); }
+    });
 
     res.json({ message: "Document rejected by HOD", upload: uploadDoc });
 
@@ -422,6 +440,14 @@ await uploadDoc.save();
     broadcastEvent("sync:approvals", { action: "ADMIN_APPROVED", id: uploadDoc._id });
     broadcastEvent("sync:credits", { department: uploadDoc.department });
 
+    // Email faculty about Admin approval (non-blocking)
+    Promise.resolve().then(async () => {
+      try {
+        const fac = await Faculty.findById(uploadDoc.faculty).select('name email').lean();
+        if (fac) await sendFacultyNotificationEmail(fac, uploadDoc.title, 'APPROVED', 'Administrator', null, uploadDoc.credits);
+      } catch (e) { console.error('[EMAIL] Admin approval notification failed:', e.message); }
+    });
+
     res.json({ message:"Upload approved by admin" });
 
   }catch(err){
@@ -456,6 +482,14 @@ exports.rejectUploadByAdmin = async (req, res) => {
     emitToUser(uploadDoc.faculty, "approvals:update", { action: "ADMIN_REJECTED", upload: uploadDoc });
 
     broadcastEvent("sync:approvals", { action: "ADMIN_REJECTED", id: uploadDoc._id });
+
+    // Email faculty about Admin rejection (non-blocking)
+    Promise.resolve().then(async () => {
+      try {
+        const fac = await Faculty.findById(uploadDoc.faculty).select('name email').lean();
+        if (fac) await sendFacultyNotificationEmail(fac, uploadDoc.title, 'REJECTED', 'Administrator', uploadDoc.adminComment);
+      } catch (e) { console.error('[EMAIL] Admin rejection notification failed:', e.message); }
+    });
 
     res.json({ message: "Document rejected by Admin", upload: uploadDoc });
 
@@ -564,6 +598,16 @@ await uploadDoc.save();
     emitToUser(uploadDoc.faculty, "approvals:update", { action: "DISCUSSION", upload: uploadDoc });
 
     broadcastEvent("sync:approvals", { action: "DISCUSSION", id: uploadDoc._id });
+
+    // Email faculty about discussion/revision (non-blocking)
+    Promise.resolve().then(async () => {
+      try {
+        const fac = await Faculty.findById(uploadDoc.faculty).select('name email').lean();
+        const statusKey = req.body.needsRevision ? 'REVISION' : 'DISCUSSION';
+        const reviewer = req.user.role === 'HOD' ? `HOD (${req.user.name || 'HOD'})` : 'Administrator';
+        if (fac) await sendFacultyNotificationEmail(fac, uploadDoc.title, statusKey, reviewer, req.body.comment);
+      } catch (e) { console.error('[EMAIL] Discussion notification failed:', e.message); }
+    });
 
     res.json({ message:"Comment added", upload:uploadDoc });
 

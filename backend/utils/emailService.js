@@ -579,11 +579,246 @@ const sendActivityEmailToFaculty = async (activity, facultyList, department) => 
   await sendMail(mailOptions);
 };
 
+
+/* ═══════════════════════════════════════════════════════════════
+   7. ONBOARDING TEMPLATE — SENT TO NEWLY CREATED USERS
+   ═══════════════════════════════════════════════════════════════ */
+const onboardingTemplate = (name, role, department, createdBy) => {
+  const roleLabel = role === 'HOD' ? 'Head of Department' : role === 'ADMIN' ? 'Administrator' : 'Faculty Member';
+  const deptLine = department && department !== 'ADMINISTRATION' ? `Department of ${department}` : 'Institutional Administration';
+
+  return emailWrapper(`
+    ${headerBand('Welcome to MIC Intellica')}
+    ${accentBar(COLORS.blue)}
+    ${bodyOpen}
+      <div style="text-align:center;">
+        <div style="width:56px; height:56px; background:${COLORS.blueLight}; border-radius:16px; display:inline-block; line-height:56px; margin-bottom:20px;">
+          <span style="font-size:26px; color:${COLORS.blue};">&#127891;</span>
+        </div>
+        <h2 style="margin:0 0 6px; font-size:20px; font-weight:800; color:${COLORS.slate900}; font-family:${FONT};">
+          Welcome to Intellica
+        </h2>
+        <p style="margin:0 0 24px; font-size:13px; color:${COLORS.slate400}; font-family:${FONT};">
+          Your account has been created by ${createdBy}
+        </p>
+      </div>
+
+      <div style="background:${COLORS.slate50}; border:1px solid ${COLORS.slate200}; border-radius:16px; padding:24px; margin-bottom:24px;">
+        <p style="margin:0 0 14px; font-size:15px; color:${COLORS.slate900}; font-family:${FONT}; font-weight:700;">
+          Hello ${name},
+        </p>
+        <p style="margin:0 0 16px; font-size:14px; color:${COLORS.slate500}; font-family:${FONT}; line-height:1.7;">
+          Your account on the MIC Intellica Portal has been set up for you as a <strong style="color:${COLORS.blue};">${roleLabel}</strong> in <strong style="color:${COLORS.slate700};">${deptLine}</strong>.
+        </p>
+        <p style="margin:0; font-size:14px; color:${COLORS.slate500}; font-family:${FONT}; line-height:1.7;">
+          You can log in using your registered email address. On your first login, you will receive a one-time password (OTP) to verify your identity and set up access.
+        </p>
+      </div>
+
+      <!-- Quick Info Card -->
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:${COLORS.slate50}; border:1px solid ${COLORS.slate200}; border-radius:16px; margin-bottom:24px;">
+        <tr>
+          <td style="padding:16px 24px; border-bottom:1px solid ${COLORS.slate200};">
+            <p style="margin:0; font-size:11px; font-weight:700; color:${COLORS.slate400}; font-family:${FONT}; text-transform:uppercase; letter-spacing:1px;">Your Role</p>
+            <p style="margin:4px 0 0; font-size:15px; font-weight:700; color:${COLORS.slate900}; font-family:${FONT};">${roleLabel}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 24px; border-bottom:1px solid ${COLORS.slate200};">
+            <p style="margin:0; font-size:11px; font-weight:700; color:${COLORS.slate400}; font-family:${FONT}; text-transform:uppercase; letter-spacing:1px;">Department</p>
+            <p style="margin:4px 0 0; font-size:15px; font-weight:700; color:${COLORS.slate900}; font-family:${FONT};">${deptLine}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 24px;">
+            <p style="margin:0; font-size:11px; font-weight:700; color:${COLORS.slate400}; font-family:${FONT}; text-transform:uppercase; letter-spacing:1px;">Login</p>
+            <p style="margin:4px 0 0; font-size:15px; font-weight:700; color:${COLORS.blue}; font-family:${FONT};">Use your email to receive OTP on first login</p>
+          </td>
+        </tr>
+      </table>
+
+      <div style="text-align:center;">
+        <a href="#" style="display:inline-block; background:${COLORS.blue}; color:${COLORS.white}; text-decoration:none; padding:14px 36px; border-radius:12px; font-size:14px; font-weight:700; font-family:${FONT}; letter-spacing:0.3px;">
+          Log In to Intellica
+        </a>
+        <p style="margin:16px 0 0; font-size:12px; color:${COLORS.slate400}; font-family:${FONT};">
+          If you have questions, please contact your ${role === 'FACULTY' ? 'HOD or ' : ''}administrator.
+        </p>
+      </div>
+    ${bodyClose}
+  `);
+};
+
+
+/* ═══════════════════════════════════════════════════════════════
+   8. FACULTY NOTIFICATION TEMPLATE — APPROVAL / REJECTION / REVISION
+   ═══════════════════════════════════════════════════════════════ */
+const STATUS_STYLES = {
+  APPROVED: {
+    icon: '&#10004;',
+    iconBg: COLORS.greenLight,
+    iconColor: COLORS.green,
+    accent: COLORS.green,
+    title: 'Proposal Approved',
+    subtitle: 'Your submission has been verified',
+    borderColor: '#86efac',
+    cardBg: `linear-gradient(135deg, ${COLORS.green}08, ${COLORS.greenLight})`,
+  },
+  REJECTED: {
+    icon: '&#10008;',
+    iconBg: COLORS.roseLight,
+    iconColor: COLORS.rose,
+    accent: COLORS.rose,
+    title: 'Proposal Rejected',
+    subtitle: 'Your submission was not approved',
+    borderColor: '#fda4af',
+    cardBg: `linear-gradient(135deg, ${COLORS.rose}08, ${COLORS.roseLight})`,
+  },
+  REVISION: {
+    icon: '&#9998;',
+    iconBg: COLORS.amberLight,
+    iconColor: COLORS.amber,
+    accent: COLORS.amber,
+    title: 'Revision Requested',
+    subtitle: 'Please review and re-submit',
+    borderColor: '#fde68a',
+    cardBg: `linear-gradient(135deg, ${COLORS.amber}08, ${COLORS.amberLight})`,
+  },
+  HOD_APPROVED: {
+    icon: '&#10004;',
+    iconBg: COLORS.blueLight,
+    iconColor: COLORS.blue,
+    accent: COLORS.blue,
+    title: 'HOD Approved — Forwarded to Admin',
+    subtitle: 'Your proposal cleared departmental review',
+    borderColor: '#93c5fd',
+    cardBg: `linear-gradient(135deg, ${COLORS.blue}08, ${COLORS.blueLight})`,
+  },
+  DISCUSSION: {
+    icon: '&#128172;',
+    iconBg: COLORS.purpleLight,
+    iconColor: COLORS.purple,
+    accent: COLORS.purple,
+    title: 'Review Comment Added',
+    subtitle: 'A reviewer left feedback on your submission',
+    borderColor: '#c4b5fd',
+    cardBg: `linear-gradient(135deg, ${COLORS.purple}08, ${COLORS.purpleLight})`,
+  },
+};
+
+const facultyNotificationTemplate = (facultyName, uploadTitle, statusKey, reviewerInfo, comment, credits) => {
+  const style = STATUS_STYLES[statusKey] || STATUS_STYLES.APPROVED;
+
+  const commentBlock = comment ? `
+    <div style="background:${COLORS.slate50}; border:1px solid ${COLORS.slate200}; border-left:4px solid ${style.accent}; border-radius:12px; padding:16px 20px; margin:16px 0 0;">
+      <p style="margin:0 0 4px; font-size:11px; font-weight:700; color:${COLORS.slate400}; font-family:${FONT}; text-transform:uppercase; letter-spacing:1px;">Reviewer Comment</p>
+      <p style="margin:0; font-size:14px; color:${COLORS.slate700}; font-family:${FONT}; line-height:1.6; font-style:italic;">"${comment}"</p>
+    </div>` : '';
+
+  const creditsBlock = credits ? `
+    <div style="text-align:center; margin:16px 0 0;">
+      <span style="display:inline-block; background:${COLORS.greenLight}; color:${COLORS.green}; font-size:13px; font-weight:800; padding:8px 20px; border-radius:20px; font-family:${FONT};">
+        +${credits} Credits Awarded
+      </span>
+    </div>` : '';
+
+  return emailWrapper(`
+    ${headerBand('Faculty Notification')}
+    ${accentBar(style.accent)}
+    ${bodyOpen}
+      <div style="text-align:center;">
+        <div style="width:56px; height:56px; background:${style.iconBg}; border-radius:16px; display:inline-block; line-height:56px; margin-bottom:20px;">
+          <span style="font-size:26px; color:${style.iconColor};">${style.icon}</span>
+        </div>
+        <h2 style="margin:0 0 6px; font-size:20px; font-weight:800; color:${COLORS.slate900}; font-family:${FONT};">
+          ${style.title}
+        </h2>
+        <p style="margin:0 0 24px; font-size:13px; color:${COLORS.slate400}; font-family:${FONT};">
+          ${style.subtitle}
+        </p>
+      </div>
+
+      <div style="background:${COLORS.slate50}; border:1px solid ${COLORS.slate200}; border-radius:16px; padding:24px; margin-bottom:20px;">
+        <p style="margin:0 0 14px; font-size:15px; color:${COLORS.slate900}; font-family:${FONT}; font-weight:700;">
+          Hello ${facultyName},
+        </p>
+        <p style="margin:0; font-size:14px; color:${COLORS.slate500}; font-family:${FONT}; line-height:1.7;">
+          Your submission has been reviewed${reviewerInfo ? ` by <strong style="color:${COLORS.slate700};">${reviewerInfo}</strong>` : ''}.
+        </p>
+      </div>
+
+      <!-- Upload Title Card -->
+      <div style="background:${style.cardBg}; border:1px solid ${style.borderColor}; border-left:4px solid ${style.accent}; border-radius:16px; padding:20px 24px;">
+        <p style="margin:0 0 4px; font-size:11px; font-weight:700; color:${COLORS.slate400}; font-family:${FONT}; text-transform:uppercase; letter-spacing:1px;">Submission</p>
+        <h3 style="margin:0; font-size:16px; font-weight:800; color:${COLORS.slate900}; font-family:${FONT};">
+          ${uploadTitle}
+        </h3>
+      </div>
+
+      ${commentBlock}
+      ${creditsBlock}
+
+      <div style="text-align:center; margin-top:24px;">
+        <p style="margin:0; font-size:13px; color:${COLORS.slate500}; font-family:${FONT}; line-height:1.6;">
+          Log in to the Intellica Portal to view details and take further action.
+        </p>
+      </div>
+    ${bodyClose}
+  `);
+};
+
+
+/* ═══════════════════════════════════════════════════════════════
+   SENDER FUNCTIONS
+   ═══════════════════════════════════════════════════════════════ */
+
+/**
+ * Send onboarding welcome email to a newly created user.
+ * @param {{ name: string, email: string, role: string, department: string }} user
+ * @param {string} createdBy - Who created this user, e.g. "Administrator" or "HOD (Dr. Kumar)"
+ */
+const sendOnboardingEmail = async (user, createdBy) => {
+  const html = onboardingTemplate(user.name, user.role || 'FACULTY', user.department || '', createdBy);
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: user.email,
+    subject: `Welcome to MIC Intellica — Your ${user.role || 'Faculty'} Account is Ready`,
+    html
+  };
+  await sendMail(mailOptions);
+};
+
+/**
+ * Send email to faculty about upload status change (approved, rejected, revision, discussion).
+ * @param {{ name: string, email: string }} faculty
+ * @param {string} uploadTitle
+ * @param {string} statusKey - One of: APPROVED, REJECTED, REVISION, HOD_APPROVED, DISCUSSION
+ * @param {string} [reviewerInfo] - e.g. "HOD (Dr. Kumar)" or "Administrator"
+ * @param {string} [comment] - Reviewer comment if any
+ * @param {number} [credits] - Credits awarded (only for APPROVED)
+ */
+const sendFacultyNotificationEmail = async (faculty, uploadTitle, statusKey, reviewerInfo, comment, credits) => {
+  const style = STATUS_STYLES[statusKey];
+  if (!style) return; // Unknown status
+
+  const html = facultyNotificationTemplate(faculty.name, uploadTitle, statusKey, reviewerInfo, comment, credits);
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: faculty.email,
+    subject: `${style.title}: "${uploadTitle}" — MIC Intellica`,
+    html
+  };
+  await sendMail(mailOptions);
+};
+
+
 module.exports = {
   sendOTP,
   sendRegistrationNotification,
   sendApprovalEmailToFaculty,
   sendApprovalEmailToHod,
   sendActivityEmailToHODs,
-  sendActivityEmailToFaculty
+  sendActivityEmailToFaculty,
+  sendOnboardingEmail,
+  sendFacultyNotificationEmail
 };

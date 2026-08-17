@@ -3,6 +3,7 @@ const Faculty = require("../models/Faculty");
 const HOD = require("../models/HOD");
 const Upload = require("../models/Upload");
 const createUserFolder = require("../utils/createUserFolder");
+const { sendOnboardingEmail } = require("../utils/emailService");
 
 /* =====================================================
    HOD CREATE FACULTY (FOR HOD'S DEPARTMENT ONLY)
@@ -68,6 +69,11 @@ exports.createFaculty = async (req, res) => {
     await Notification.create({
       message: `HOD (${req.user.name}) added faculty member ${newFaculty.name} (${hodDept}). Awaiting Admin Approval.`,
       role: "ADMIN"
+    });
+
+    // Send onboarding email (non-blocking)
+    Promise.resolve().then(async () => {
+      try { await sendOnboardingEmail(newFaculty, `HOD (${req.user.name})`); } catch (e) { console.error('[EMAIL] Faculty onboarding by HOD failed:', e.message); }
     });
 
     return res.status(201).json({

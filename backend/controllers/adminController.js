@@ -7,7 +7,7 @@ const Notification = require("../models/Notification");
 const createUserFolder = require("../utils/createUserFolder");
 const Upload = require("../models/Upload");
 const Department = require("../models/Department");
-const { sendApprovalEmailToFaculty, sendApprovalEmailToHod } = require("../utils/emailService");
+const { sendApprovalEmailToFaculty, sendApprovalEmailToHod, sendOnboardingEmail } = require("../utils/emailService");
 
 
 /* =========================
@@ -1135,6 +1135,11 @@ exports.createFaculty = async (req, res) => {
 
       await newAdmin.save();
 
+      // Send onboarding email (non-blocking)
+      Promise.resolve().then(async () => {
+        try { await sendOnboardingEmail(newAdmin, 'Institutional Administrator'); } catch (e) { console.error('[EMAIL] Admin onboarding failed:', e.message); }
+      });
+
       return res.status(201).json({
         message: `Administrator account for ${name} created successfully with full Admin privileges`,
         faculty: newAdmin,
@@ -1167,6 +1172,11 @@ exports.createFaculty = async (req, res) => {
         { hod: name.trim() }
       );
 
+      // Send onboarding email (non-blocking)
+      Promise.resolve().then(async () => {
+        try { await sendOnboardingEmail(newHod, 'Institutional Administrator'); } catch (e) { console.error('[EMAIL] HOD onboarding failed:', e.message); }
+      });
+
       return res.status(201).json({
         message: `HOD ${name} created and assigned to ${normalizedDept} successfully`,
         faculty: newHod
@@ -1191,6 +1201,11 @@ exports.createFaculty = async (req, res) => {
       });
 
       await newFaculty.save();
+
+      // Send onboarding email (non-blocking)
+      Promise.resolve().then(async () => {
+        try { await sendOnboardingEmail(newFaculty, 'Institutional Administrator'); } catch (e) { console.error('[EMAIL] Faculty onboarding failed:', e.message); }
+      });
 
       return res.status(201).json({
         message: "Faculty member added successfully",
