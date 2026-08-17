@@ -19,10 +19,10 @@ const helmetMiddleware = helmet({
       scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "blob:", "http://localhost:*", "http://127.0.0.1:*"],
-      connectSrc: ["'self'", "http://localhost:*", "http://127.0.0.1:*"],
+      imgSrc: ["'self'", "data:", "blob:", "http://localhost:*", "http://127.0.0.1:*", "http://192.168.*:*", "http://10.*:*"],
+      connectSrc: ["'self'", "http://localhost:*", "http://127.0.0.1:*", "http://192.168.*:*", "http://10.*:*", "ws://localhost:*", "ws://127.0.0.1:*", "ws://192.168.*:*", "ws://10.*:*"],
       // Allow framing for PDF/image previews in same origin iframes
-      frameAncestors: ["'self'", "http://localhost:*", "http://127.0.0.1:*"],
+      frameAncestors: ["'self'", "http://localhost:*", "http://127.0.0.1:*", "http://192.168.*:*", "http://10.*:*"],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: process.env.NODE_ENV === "production" ? [] : null,
     },

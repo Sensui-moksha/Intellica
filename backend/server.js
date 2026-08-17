@@ -54,6 +54,11 @@ app.use(cors({
     // Allow same-origin / non-browser / curl / postman requests (no origin header)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
+    // Allow LAN/WiFi network origins in development (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+    if (!IS_PROD) {
+      const isLanOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin);
+      if (isLanOrigin) return callback(null, true);
+    }
     callback(new Error(`CORS: origin '${origin}' is not allowed`));
   },
   credentials: true,                                    // ← required for cookies

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Download, Plus, Search, Loader2, CheckCircle2,
   Clock, Trash2, Edit3, X, AlertTriangle, CheckSquare, Square,
-  Mail, User, Key, RefreshCw, ShieldCheck, Crown
+  Mail, User, RefreshCw, ShieldCheck, Crown
 } from 'lucide-react';
 import { adminApi } from '../../api/services';
 
@@ -822,38 +822,45 @@ export default function AdminFaculty() {
                   </div>
                 </div>
 
-                {/* Designation & Password */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Designation Title
-                    </label>
-                    <input
-                      type="text"
-                      value={form.designation}
-                      onChange={e => setForm({ ...form, designation: e.target.value })}
-                      placeholder="e.g. Institutional Administrator / Professor"
-                      className="w-full px-3.5 py-2 bg-slate-50 border rounded-2xl text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500"
-                      style={{ borderColor: '#e2e8f0' }}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {editTarget ? 'Set New Password (Optional)' : 'Initial Password (Optional)'}
-                    </label>
-                    <div className="relative">
-                      <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                      <input
-                        type="password"
-                        value={form.password}
-                        onChange={e => setForm({ ...form, password: e.target.value })}
-                        placeholder={editTarget ? 'Leave blank to retain' : 'Leave blank for OTP onboarding'}
-                        className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border rounded-2xl text-xs outline-none focus:bg-white focus:ring-2 focus:ring-blue-500"
-                        style={{ borderColor: '#e2e8f0' }}
-                      />
-                    </div>
-                  </div>
+                {/* Designation Dropdown */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Designation <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={form.designation}
+                    onChange={e => setForm({ ...form, designation: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border rounded-2xl text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 text-slate-800 transition-all cursor-pointer"
+                    style={{ borderColor: '#e2e8f0' }}
+                  >
+                    {form.role === 'ADMIN' ? (
+                      <>
+                        <option value="Institutional Administrator">Institutional Administrator</option>
+                        <option value="Principal / Dean">Principal / Dean</option>
+                        <option value="Director">Director</option>
+                        <option value="Academic Administrator">Academic Administrator</option>
+                        <option value="System Administrator">System Administrator</option>
+                      </>
+                    ) : form.role === 'HOD' ? (
+                      <>
+                        <option value="Head of Department (HOD)">Head of Department (HOD)</option>
+                        <option value="Professor & HOD">Professor & HOD</option>
+                        <option value="Associate Professor & HOD">Associate Professor & HOD</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="Assistant Professor">Assistant Professor</option>
+                        <option value="Associate Professor">Associate Professor</option>
+                        <option value="Professor">Professor</option>
+                        <option value="Senior Lecturer">Senior Lecturer</option>
+                        <option value="Lecturer">Lecturer</option>
+                        <option value="Research Scholar">Research Scholar</option>
+                        <option value="Visiting Faculty">Visiting Faculty</option>
+                        <option value="Adjunct Professor">Adjunct Professor</option>
+                      </>
+                    )}
+                  </select>
                 </div>
 
                 <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
