@@ -212,13 +212,15 @@ mongoose
   .then(async () => {
     console.log("✅  MongoDB connected");
 
-    // Auto-seed database if SEEDER=true in .env
+    // Auto-seed database if SEEDER=true in .env or if Category collection is incomplete
     const isSeederEnabled = String(process.env.SEEDER || process.env.seeder || "").trim().toLowerCase() === "true";
-    if (isSeederEnabled) {
-      console.log("🌱  SEEDER=true detected in environment. Running auto-seeder...");
+    const CategoryModel = require("./models/Category");
+    const categoryCount = await CategoryModel.countDocuments();
+    if (isSeederEnabled || categoryCount < 30) {
+      console.log(`🌱  Auto-seeder triggered (SEEDER=${isSeederEnabled}, categoryCount=${categoryCount}). Seeding 34 categories...`);
       try {
-        const { seedDatabase } = require("./seedDatabase");
-        await seedDatabase({ reset: false, disconnect: false });
+        const seedDatabase = require("./seedDatabase");
+        await (seedDatabase.seedDatabase || seedDatabase)({ reset: false, disconnect: false });
         console.log("🌱  Auto-seeding completed successfully.");
       } catch (seedErr) {
         console.error("⚠️  Auto-seed warning:", seedErr.message);

@@ -624,7 +624,8 @@ const SEED_CREDIT_RULES = [
   { category: "InstitutionalCommittees", section: "administrative", ruleKey: "comm_statutory_lead", displayName: "Statutory Committee Convener (Anti-Ragging / Grievance)", creditPoints: 15, description: "Mandatory statutory body convener" }
 ];
 
-async function seedDatabase() {
+async function seedDatabase(options = {}) {
+  const { disconnect = true } = options;
   console.log("==========================================================");
   console.log("🚀 INTELLICA DATABASE SEEDER");
   console.log("==========================================================");
@@ -632,12 +633,16 @@ async function seedDatabase() {
   const mongoUri = process.env.MONGO_URI;
   if (!mongoUri) {
     console.error("❌ ERROR: MONGO_URI is missing from environment variables!");
-    process.exit(1);
+    if (disconnect) process.exit(1);
+    return;
   }
 
-  console.log("📡 Connecting to MongoDB...");
-  await mongoose.connect(mongoUri);
-  console.log("✅ Connected to MongoDB successfully\n");
+  const isAlreadyConnected = mongoose.connection && mongoose.connection.readyState === 1;
+  if (!isAlreadyConnected) {
+    console.log("📡 Connecting to MongoDB...");
+    await mongoose.connect(mongoUri);
+    console.log("✅ Connected to MongoDB successfully\n");
+  }
 
   try {
     const salt = await bcrypt.genSalt(10);
@@ -749,8 +754,10 @@ async function seedDatabase() {
   } catch (err) {
     console.error("❌ SEEDING ERROR:", err);
   } finally {
-    await mongoose.disconnect();
-    console.log("👋 Disconnected from MongoDB\n");
+    if (disconnect && !isAlreadyConnected) {
+      await mongoose.disconnect();
+      console.log("👋 Disconnected from MongoDB\n");
+    }
   }
 }
 
@@ -759,3 +766,4 @@ if (require.main === module) {
 }
 
 module.exports = seedDatabase;
+module.exports.seedDatabase = seedDatabase;
