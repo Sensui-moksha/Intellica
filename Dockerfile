@@ -3,7 +3,7 @@
 # =============================================================================
 
 # ── Stage 1: Build Frontend & Prepare Workspace ─────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 
 WORKDIR /app
 
@@ -12,10 +12,8 @@ COPY package.json package-lock.json* ./
 COPY backend/package.json backend/package-lock.json* backend/
 COPY frontend/package.json frontend/package-lock.json* frontend/
 
-# Install build tools and full dependencies for building
-RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
-    npm install && \
-    apk del .build-deps
+# Install full workspace dependencies for building
+RUN npm install
 
 # Copy full source trees
 COPY backend/ backend/
@@ -25,21 +23,20 @@ COPY frontend/ frontend/
 RUN npm run build --workspace=frontend
 
 # ── Stage 2: Production Server ──────────────────────────────────────────────
-FROM node:20-alpine AS production
+FROM node:20-slim AS production
 
 WORKDIR /app
 
 # Install curl for container health checks
-RUN apk add --no-cache curl
+RUN apt-get update && apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy root and backend package manifests
 COPY package.json ./
 COPY backend/package.json backend/package-lock.json* backend/
 
 # Install production-only dependencies for the backend
-RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
-    cd backend && npm install --omit=dev && \
-    apk del .build-deps
+RUN cd backend && npm install --omit=dev
 
 # Copy backend application source code
 COPY backend/ backend/
