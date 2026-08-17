@@ -365,8 +365,8 @@ export default function FacultyDashboard() {
                           <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-purple-600 text-white flex items-center gap-1 shadow-2xs">
                             <Shield className="w-2.5 h-2.5" /> Institutional
                           </span>
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/80">
-                            👑 Principal / Admin (All HODs)
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-800 border border-purple-200/80 flex items-center gap-1">
+                            <Shield className="w-2.5 h-2.5 text-purple-600" /> Principal / Admin (All HODs)
                           </span>
                         </>
                       ) : (
@@ -374,8 +374,8 @@ export default function FacultyDashboard() {
                           <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-blue-600 text-white flex items-center gap-1 shadow-2xs">
                             <Building2 className="w-2.5 h-2.5" /> Dept Internal
                           </span>
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-                            👔 By HOD ({profile?.department || 'CSE'} Faculty)
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200/80 flex items-center gap-1">
+                            <Building2 className="w-2.5 h-2.5 text-blue-600" /> By HOD ({profile?.department || 'CSE'} Faculty)
                           </span>
                         </>
                       )}

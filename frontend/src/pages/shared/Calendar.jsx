@@ -780,7 +780,7 @@ export default function DepartmentCalendar() {
                 <div className="p-3.5 bg-purple-50 border border-purple-200 rounded-2xl text-xs font-bold text-purple-900 flex items-start gap-2.5">
                   <Shield className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-black">🏛️ Scope: Institutional Leadership Event</p>
+                    <p className="font-black">Scope: Institutional Leadership Event</p>
                     <p className="text-[11px] text-purple-700 font-medium mt-0.5">
                       This schedule will appear on the calendar and agenda of <strong>all Department Heads (HODs)</strong> college-wide.
                     </p>
@@ -790,7 +790,7 @@ export default function DepartmentCalendar() {
                 <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-2xl text-xs font-bold text-blue-900 flex items-start gap-2.5">
                   <Building2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-black">🏢 Scope: Department Internal Schedule</p>
+                    <p className="font-black">Scope: Department Internal Schedule</p>
                     <p className="text-[11px] text-blue-700 font-medium mt-0.5">
                       This schedule will be visible exclusively to <strong>{selectedDept || 'CSE'} Department Faculty</strong> and yourself.
                     </p>
