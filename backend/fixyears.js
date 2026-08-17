@@ -1,5 +1,7 @@
+const path = require("path");
 const mongoose = require("mongoose");
-require("dotenv").config();
+require("dotenv").config({ path: path.join(__dirname, ".env") });
+
 
 mongoose.connect(process.env.MONGO_URI).then(async () => {
   const Upload = require("./models/Upload");
