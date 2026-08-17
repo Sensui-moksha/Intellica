@@ -106,14 +106,19 @@ filePath: relativePath, status
 if (req.user.role === "FACULTY") {
   const notif = await Notification.create({
     message: `New activity submission: "${title}" by ${req.user.name || "Faculty"} (${req.user.department || "Academic"}). Awaiting HOD review.`,
-    role: "HOD"
+    role: "HOD",
+    department: req.user.department || "",
+    type: "SUBMISSION",
+    uploadId: upload._id
   }).catch(() => {});
-  if (notif) emitToRole("HOD", "notification:new", notif);
-  emitToRole("HOD", "approvals:update", { action: "NEW_SUBMISSION", upload });
+  if (notif) emitToDepartment(req.user.department, "notification:new", notif);
+  emitToDepartment(req.user.department, "approvals:update", { action: "NEW_SUBMISSION", upload });
 } else if (req.user.role === "HOD") {
   const notif = await Notification.create({
     message: `HOD (${req.user.name || "HOD"}) submitted activity: "${title}" (${req.user.department || "Academic"}). Awaiting Admin review.`,
-    role: "ADMIN"
+    role: "ADMIN",
+    type: "SUBMISSION",
+    uploadId: upload._id
   }).catch(() => {});
   if (notif) emitToRole("ADMIN", "notification:new", notif);
   emitToRole("ADMIN", "approvals:update", { action: "NEW_SUBMISSION", upload });
@@ -258,16 +263,21 @@ await uploadDoc.save();
 
     const notifAdmin = await Notification.create({
       message: `Upload "${uploadDoc.title}" (${uploadDoc.department}) was approved by HOD (${req.user.name || "HOD"}). Awaiting Admin verification.`,
-      role: "ADMIN"
+      role: "ADMIN",
+      type: "APPROVAL",
+      uploadId: uploadDoc._id
     }).catch(() => {});
     if (notifAdmin) emitToRole("ADMIN", "notification:new", notifAdmin);
     emitToRole("ADMIN", "approvals:update", { action: "HOD_APPROVED", upload: uploadDoc });
 
     const notifFac = await Notification.create({
-      message: `Your upload "${uploadDoc.title}" has been approved by your HOD (${req.user.name || "HOD"}).`,
-      role: "FACULTY"
+      message: `Your upload "${uploadDoc.title}" has been approved by your HOD (${req.user.name || "HOD"}). Forwarded to Admin.`,
+      userId: uploadDoc.faculty,
+      role: "FACULTY",
+      type: "APPROVAL",
+      uploadId: uploadDoc._id
     }).catch(() => {});
-    if (notifFac) emitToRole("FACULTY", "notification:new", notifFac);
+    if (notifFac) emitToUser(uploadDoc.faculty, "notification:new", notifFac);
     emitToUser(uploadDoc.faculty, "approvals:update", { action: "HOD_APPROVED", upload: uploadDoc });
 
     broadcastEvent("sync:approvals", { action: "HOD_APPROVED", id: uploadDoc._id });
@@ -300,9 +310,12 @@ exports.rejectUploadByHOD = async (req, res) => {
 
     const notif = await Notification.create({
       message: `Your upload "${uploadDoc.title}" was rejected by HOD (${req.user.name || "HOD"}): ${uploadDoc.hodComment}`,
-      role: "FACULTY"
+      userId: uploadDoc.faculty,
+      role: "FACULTY",
+      type: "REJECTION",
+      uploadId: uploadDoc._id
     }).catch(() => {});
-    if (notif) emitToRole("FACULTY", "notification:new", notif);
+    if (notif) emitToUser(uploadDoc.faculty, "notification:new", notif);
     emitToUser(uploadDoc.faculty, "approvals:update", { action: "HOD_REJECTED", upload: uploadDoc });
 
     broadcastEvent("sync:approvals", { action: "HOD_REJECTED", id: uploadDoc._id });
@@ -388,17 +401,23 @@ await uploadDoc.save();
 
     const notifFac = await Notification.create({
       message: `Your upload "${uploadDoc.title}" has been verified and awarded ${uploadDoc.credits || 0} credits by the Administrator.`,
-      role: "FACULTY"
+      userId: uploadDoc.faculty,
+      role: "FACULTY",
+      type: "APPROVAL",
+      uploadId: uploadDoc._id
     }).catch(() => {});
-    if (notifFac) emitToRole("FACULTY", "notification:new", notifFac);
+    if (notifFac) emitToUser(uploadDoc.faculty, "notification:new", notifFac);
     emitToUser(uploadDoc.faculty, "approvals:update", { action: "ADMIN_APPROVED", upload: uploadDoc });
 
     const notifHod = await Notification.create({
       message: `Upload "${uploadDoc.title}" (${uploadDoc.department}) has been verified and approved by Administrator.`,
-      role: "HOD"
+      role: "HOD",
+      department: uploadDoc.department,
+      type: "APPROVAL",
+      uploadId: uploadDoc._id
     }).catch(() => {});
-    if (notifHod) emitToRole("HOD", "notification:new", notifHod);
-    emitToRole("HOD", "approvals:update", { action: "ADMIN_APPROVED", upload: uploadDoc });
+    if (notifHod) emitToDepartment(uploadDoc.department, "notification:new", notifHod);
+    emitToDepartment(uploadDoc.department, "approvals:update", { action: "ADMIN_APPROVED", upload: uploadDoc });
 
     broadcastEvent("sync:approvals", { action: "ADMIN_APPROVED", id: uploadDoc._id });
     broadcastEvent("sync:credits", { department: uploadDoc.department });
@@ -428,9 +447,12 @@ exports.rejectUploadByAdmin = async (req, res) => {
 
     const notif = await Notification.create({
       message: `Your upload "${uploadDoc.title}" was rejected by Administrator: ${uploadDoc.adminComment}`,
-      role: "FACULTY"
+      userId: uploadDoc.faculty,
+      role: "FACULTY",
+      type: "REJECTION",
+      uploadId: uploadDoc._id
     }).catch(() => {});
-    if (notif) emitToRole("FACULTY", "notification:new", notif);
+    if (notif) emitToUser(uploadDoc.faculty, "notification:new", notif);
     emitToUser(uploadDoc.faculty, "approvals:update", { action: "ADMIN_REJECTED", upload: uploadDoc });
 
     broadcastEvent("sync:approvals", { action: "ADMIN_REJECTED", id: uploadDoc._id });
@@ -531,12 +553,19 @@ uploadDoc.status = req.body.needsRevision ? "NEEDS_REVISION" : "ADMIN_COMMENT";
 }
 await uploadDoc.save();
 
-await Notification.create({
-  message: `${req.user.role === "HOD" ? `HOD (${req.user.name || "HOD"})` : "Administrator"} added a review comment on "${uploadDoc.title}"${req.body.needsRevision ? " (Revision Requested)" : ""}: ${req.body.comment || ""}`,
-  role: "FACULTY"
-}).catch(() => {});
+    const notif = await Notification.create({
+      message: `${req.user.role === "HOD" ? `HOD (${req.user.name || "HOD"})` : "Administrator"} added a review comment on "${uploadDoc.title}"${req.body.needsRevision ? " (Revision Requested)" : ""}: ${req.body.comment || ""}`,
+      userId: uploadDoc.faculty,
+      role: "FACULTY",
+      type: "DISCUSSION",
+      uploadId: uploadDoc._id
+    }).catch(() => {});
+    if (notif) emitToUser(uploadDoc.faculty, "notification:new", notif);
+    emitToUser(uploadDoc.faculty, "approvals:update", { action: "DISCUSSION", upload: uploadDoc });
 
-res.json({ message:"Comment added", upload:uploadDoc });
+    broadcastEvent("sync:approvals", { action: "DISCUSSION", id: uploadDoc._id });
+
+    res.json({ message:"Comment added", upload:uploadDoc });
 
 }catch(err){
 console.error(err);

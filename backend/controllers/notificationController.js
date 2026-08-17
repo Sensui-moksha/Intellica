@@ -1,16 +1,73 @@
 const Notification = require("../models/Notification");
+const mongoose = require("mongoose");
+
+/**
+ * Builds a targeted query ensuring:
+ * 1. Targeted personal notifications (e.g. Neil's rejection/approval) only go to that user
+ * 2. Department-specific HOD notifications (e.g. CSE faculty submission) only go to CSE HOD
+ * 3. Administrative notices go to Admin
+ */
+function buildNotificationQuery(user) {
+  const userId = user.id || user._id;
+  const role = (user.role || '').toUpperCase();
+  const department = (user.department || '').trim();
+
+  const conditions = [];
+
+  // 1. Notifications targeted directly to this specific user (e.g. Neil)
+  if (userId) {
+    conditions.push({ userId: new mongoose.Types.ObjectId(userId.toString()) });
+  }
+
+  // 2. Role-specific notices
+  if (role === "ADMIN") {
+    conditions.push({
+      role: { $regex: /^admin$/i },
+      $or: [{ userId: null }, { userId: { $exists: false } }]
+    });
+  } else if (role === "HOD") {
+    const deptRegex = department ? new RegExp(`^${department}$`, 'i') : null;
+    conditions.push({
+      role: { $regex: /^hod$/i },
+      $or: [{ userId: null }, { userId: { $exists: false } }],
+      ...(deptRegex ? {
+        $or: [
+          { department: null },
+          { department: "" },
+          { department: { $exists: false } },
+          { department: { $regex: deptRegex } }
+        ]
+      } : {})
+    });
+  } else if (role === "FACULTY") {
+    // Broad institutional notices meant for all faculty without a specific userId
+    const deptRegex = department ? new RegExp(`^${department}$`, 'i') : null;
+    conditions.push({
+      role: { $regex: /^faculty$/i },
+      $or: [{ userId: null }, { userId: { $exists: false } }],
+      ...(deptRegex ? {
+        $or: [
+          { department: null },
+          { department: "" },
+          { department: { $exists: false } },
+          { department: { $regex: deptRegex } }
+        ]
+      } : {})
+    });
+  }
+
+  return conditions.length > 0 ? { $or: conditions } : {};
+}
 
 exports.getNotifications = async (req, res) => {
   try {
-    const role = req.user.role;
     const userId = req.user.id;
+    const query = buildNotificationQuery(req.user);
 
-    // Fetch the 40 most recent notifications relevant to this role
-    const rawNotifications = await Notification.find({
-      role: { $regex: new RegExp(`^${role}$`, 'i') }
-    })
+    // Fetch up to 100 notifications matching targeted criteria
+    const rawNotifications = await Notification.find(query)
       .sort({ createdAt: -1 })
-      .limit(40)
+      .limit(100)
       .lean();
 
     const notifications = rawNotifications.map(n => {
@@ -51,13 +108,15 @@ exports.markAsRead = async (req, res) => {
 
 exports.markAllAsRead = async (req, res) => {
   try {
-    const role = req.user.role;
     const userId = req.user.id;
+    const query = buildNotificationQuery(req.user);
 
     await Notification.updateMany(
       {
-        role: { $regex: new RegExp(`^${role}$`, 'i') },
-        readBy: { $ne: userId }
+        $and: [
+          query,
+          { readBy: { $ne: userId } }
+        ]
       },
       {
         $addToSet: { readBy: userId }
@@ -87,12 +146,14 @@ exports.deleteNotification = async (req, res) => {
 
 exports.clearReadNotifications = async (req, res) => {
   try {
-    const role = req.user.role;
     const userId = req.user.id;
+    const query = buildNotificationQuery(req.user);
 
     await Notification.deleteMany({
-      role: { $regex: new RegExp(`^${role}$`, 'i') },
-      readBy: userId
+      $and: [
+        query,
+        { readBy: userId }
+      ]
     });
 
     res.json({ message: "Read notifications cleared" });
@@ -101,4 +162,3 @@ exports.clearReadNotifications = async (req, res) => {
     res.status(500).json({ message: "Failed to clear notifications" });
   }
 };
-
