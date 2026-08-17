@@ -13,28 +13,22 @@ const transporter = nodemailer.createTransport({
 
 // ─────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────
-// Logo helper — Uses Base64 Data URI so NO attachment icon appears in Gmail inbox list
+// Logo helper — Uses standard CID inline attachment so Gmail, Apple Mail & Outlook display it properly
 // ─────────────────────────────────────────────────────────────
-let cachedLogoDataUri = null;
+const getLogoPath = () => {
+  const candidates = [
+    path.join(__dirname, '..', 'assets', 'mic_logo.png'),
+    path.join(__dirname, '..', '..', 'frontend', 'src', 'assets', 'mic_logo.png'),
+    path.join(__dirname, '..', '..', 'frontend', 'dist', 'assets', 'mic_logo.png'),
+    path.resolve(process.cwd(), 'backend', 'assets', 'mic_logo.png'),
+    path.resolve(process.cwd(), 'assets', 'mic_logo.png')
+  ];
+  return candidates.find(p => fs.existsSync(p)) || null;
+};
+
 const getLogoSrc = () => {
   if (process.env.EMAIL_LOGO_URL) return process.env.EMAIL_LOGO_URL;
-  if (cachedLogoDataUri) return cachedLogoDataUri;
-  try {
-    const candidates = [
-      path.join(__dirname, '..', 'assets', 'mic_logo.png'),
-      path.join(__dirname, '..', '..', 'frontend', 'src', 'assets', 'mic_logo.png'),
-      path.join(__dirname, '..', '..', 'frontend', 'src', 'assets', 'logo.png')
-    ];
-    const foundPath = candidates.find(p => fs.existsSync(p));
-    if (foundPath) {
-      const fileBuf = fs.readFileSync(foundPath);
-      cachedLogoDataUri = `data:image/png;base64,${fileBuf.toString('base64')}`;
-      return cachedLogoDataUri;
-    }
-  } catch (err) {
-    console.error('Failed to load logo data URI:', err);
-  }
-  return '';
+  return 'cid:mic_logo';
 };
 
 const sendMail = async (mailOptions) => {
@@ -44,8 +38,21 @@ const sendMail = async (mailOptions) => {
       mailOptions.to = process.env.EMAIL_OVERRIDE_TO;
     }
 
-    // Ensure zero attachments so Gmail doesn't show an attachment chip in the inbox thread list
-    mailOptions.attachments = [];
+    // Attach logo as inline CID attachment for proper rendering across all email clients
+    if (!process.env.EMAIL_LOGO_URL) {
+      const logoPath = getLogoPath();
+      if (logoPath) {
+        mailOptions.attachments = [
+          {
+            filename: 'mic_logo.png',
+            path: logoPath,
+            cid: 'mic_logo',
+            contentDisposition: 'inline'
+          },
+          ...(mailOptions.attachments || [])
+        ];
+      }
+    }
 
     await transporter.sendMail(mailOptions);
     console.log('Email sent to', mailOptions.to, 'subject:', mailOptions.subject);
