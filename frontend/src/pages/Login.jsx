@@ -11,33 +11,33 @@ import {
 import micLogo from '../assets/mic_logo.png';
 
 export default function Login() {
-  const [identifier, setIdentifier]       = useState(localStorage.getItem('last_login_identifier') || '');
-  const [password, setPassword]           = useState('');
-  const [showPassword, setShowPass]       = useState(false);
-  
+  const [identifier, setIdentifier] = useState(localStorage.getItem('last_login_identifier') || '');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPass] = useState(false);
+
   // User Validation State: null | { name, email, role, department, hasPassword, isFirstLogin }
   const [validatedUser, setValidatedUser] = useState(null);
-  const [validating, setValidating]       = useState(false);
+  const [validating, setValidating] = useState(false);
 
   // Steps: 'IDENTIFIER' | 'PASSWORD' | 'FIRST_TIME' | 'LOGIN_OTP' | 'FORGOT_REQUEST' | 'FORGOT_OTP' | 'FORGOT_NEW_PASSWORD'
-  const [step, setStep]                   = useState('IDENTIFIER');
-  
+  const [step, setStep] = useState('IDENTIFIER');
+
   // 6-Digit OTP Box Arrays
-  const [loginOtp, setLoginOtp]           = useState(['', '', '', '', '', '']);
-  const [resetOtp, setResetOtp]           = useState(['', '', '', '', '', '']);
+  const [loginOtp, setLoginOtp] = useState(['', '', '', '', '', '']);
+  const [resetOtp, setResetOtp] = useState(['', '', '', '', '', '']);
   const [verifiedOtpString, setVerifiedOtpString] = useState('');
 
   // Password Reset Fields
-  const [newPassword, setNewPassword]     = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPass] = useState('');
   const [showNewPassword, setShowNewPass] = useState(false);
-  const [showConfirmPass, setShowConfPass]= useState(false);
+  const [showConfirmPass, setShowConfPass] = useState(false);
 
-  const [error, setError]                 = useState('');
-  const [infoMessage, setInfoMessage]     = useState('');
-  const [successMessage, setSuccessMsg]   = useState('');
-  const [loading, setLoading]             = useState(false);
-  const [otpLoading, setOtpLoading]       = useState(false);
+  const [error, setError] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
+  const [successMessage, setSuccessMsg] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
   const navigate = useNavigate();
 
   // Refs for 6-box inputs
@@ -351,7 +351,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
       style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #edf2f7 50%, #e2e8f0 100%)' }}>
-      
+
       {/* Background Ambient Blobs */}
       <div className="absolute top-[-15%] left-[-10%] w-[550px] h-[550px] rounded-full blur-[130px] pointer-events-none"
         style={{ background: 'rgba(37, 99, 235, 0.12)' }} />
@@ -362,16 +362,16 @@ export default function Login() {
         initial={{ opacity: 0, y: 18, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
-        className="w-full max-w-[440px] bg-white rounded-3xl shadow-xl p-8 sm:p-9 border relative z-10"
+        className="w-full max-w-[460px] bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-8 sm:p-9 border relative z-10"
         style={{ borderColor: '#e2e8f0' }}
       >
         {/* Brand Logo & Header */}
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-full max-w-[340px] bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5 mb-3.5 shadow-xs flex items-center justify-center">
+          <div className="w-full max-w-[330px] flex items-center justify-center mb-3">
             <img
               src={micLogo}
               alt="DVR & Dr. HS MIC College of Technology"
-              className="w-full h-auto max-h-12 object-contain mx-auto block select-none"
+              className="w-full h-auto max-h-14 object-contain select-none block"
             />
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Intellica</h1>
@@ -416,7 +416,7 @@ export default function Login() {
         </AnimatePresence>
 
         <AnimatePresence mode="wait">
-          
+
           {/* ─────────────────────────────────────────────────────────── */}
           {/* STEP 1: ENTER EMAIL / ID (INITIAL STEP)                     */}
           {/* ─────────────────────────────────────────────────────────── */}
