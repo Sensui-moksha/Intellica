@@ -11,6 +11,7 @@ import { facultyApi, rankingApi, authApi, activityApi, pbasApi } from '../../api
 import { resolveProfileImageUrl } from '../../components/Header';
 import { subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
 import PBASAppraisalModal from '../../components/pbas/PBASAppraisalModal';
+import { academicYearApi } from '../../api/services';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
 
@@ -33,16 +34,32 @@ export default function FacultyDashboard() {
   const [pbasScore, setPbasScore]   = useState(null);
   const [imgError, setImgError]     = useState(false);
 
-  const fetchAll = async (isSilent = false) => {
+  const [academicYear, setAcademicYear] = useState('');
+  const [academicYearList, setAcademicYearList] = useState([]);
+
+  // Fetch Academic Years on mount
+  useEffect(() => {
+    academicYearApi.getAll().then(res => {
+      const list = Array.isArray(res.data) ? res.data : [];
+      if (list.length > 0) {
+        setAcademicYearList(list);
+        const current = list.find(y => y.isCurrent) || list[0];
+        setAcademicYear(current.year);
+      }
+    }).catch(() => {});
+  }, []);
+
+  const fetchAll = async (yearToFetch, isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
+      const params = yearToFetch ? { academicYear: yearToFetch } : {};
       const [profileRes, uploadsRes, rankRes, meRes, actRes, rankingsRes] = await Promise.all([
         facultyApi.getProfile().catch(() => null),
-        facultyApi.getMyUploads().catch(() => ({ data: [] })),
+        facultyApi.getMyUploads(params).catch(() => ({ data: [] })),
         rankingApi.getMyRank().catch(() => ({ data: null })),
         authApi.getMe().catch(() => null),
-        activityApi.getActivities().catch(() => ({ data: { activities: [] } })),
-        rankingApi.getRankings().catch(() => ({ data: [] }))
+        activityApi.getActivities(params).catch(() => ({ data: { activities: [] } })),
+        rankingApi.getRankings(params).catch(() => ({ data: [] }))
       ]);
       const mergedProfile = {
         ...(profileRes?.data || {}),
@@ -67,32 +84,35 @@ export default function FacultyDashboard() {
   };
 
   // Fetch PBAS score (separate from main fetch to avoid coupling)
-  const fetchPBASScore = async () => {
+  const fetchPBASScore = async (yearToFetch) => {
     try {
       const meRes = await authApi.getMe().catch(() => null);
       const myId = meRes?.data?._id || meRes?.data?.id;
-      if (myId) {
-        const scoreRes = await pbasApi.getFacultyScore(myId).catch(() => null);
+      if (myId && yearToFetch) {
+        const scoreRes = await pbasApi.getFacultyScore(myId, yearToFetch).catch(() => null);
         if (scoreRes?.data?.score) setPbasScore(scoreRes.data);
+        else setPbasScore(null);
       }
     } catch (_) {}
   };
 
   useEffect(() => {
-    fetchAll(false);
-    fetchPBASScore();
+    if (!academicYear) return;
+    
+    fetchAll(academicYear, false);
+    fetchPBASScore(academicYear);
 
     // Realtime subscriptions
-    const unsubActivities = subscribeToRealtimeEvent(SYNC_EVENTS.ACTIVITIES_UPDATED, () => fetchAll(true));
-    const unsubApprovals = subscribeToRealtimeEvent(SYNC_EVENTS.APPROVALS_UPDATED, () => fetchAll(true));
-    const unsubProfile = subscribeToRealtimeEvent(SYNC_EVENTS.PROFILE_UPDATED, () => fetchAll(true));
+    const unsubActivities = subscribeToRealtimeEvent(SYNC_EVENTS.ACTIVITIES_UPDATED, () => fetchAll(academicYear, true));
+    const unsubApprovals = subscribeToRealtimeEvent(SYNC_EVENTS.APPROVALS_UPDATED, () => fetchAll(academicYear, true));
+    const unsubProfile = subscribeToRealtimeEvent(SYNC_EVENTS.PROFILE_UPDATED, () => fetchAll(academicYear, true));
 
     // Update on focus
-    const handleFocus = () => fetchAll(true);
+    const handleFocus = () => fetchAll(academicYear, true);
     window.addEventListener('focus', handleFocus);
 
     // Heartbeat silent sync every 10s
-    const interval = setInterval(() => fetchAll(true), 10000);
+    const interval = setInterval(() => fetchAll(academicYear, true), 10000);
 
     return () => {
       unsubActivities();
@@ -101,7 +121,7 @@ export default function FacultyDashboard() {
       window.removeEventListener('focus', handleFocus);
       clearInterval(interval);
     };
-  }, []);
+  }, [academicYear]);
 
   const approvedUploads = uploads.filter(
     u => u.status === 'ADMIN_APPROVED' || u.status === 'HOD_APPROVED' || u.status === 'APPROVED'
@@ -235,12 +255,34 @@ export default function FacultyDashboard() {
               </div>
 
               <p className="text-xs text-slate-300 font-medium pt-0.5">
-                Department of {facultyDept} • Academic Year {new Date().getFullYear()}
+                Department of {facultyDept} • Academic Year {academicYear || new Date().getFullYear()}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3 self-stretch md:self-auto justify-end flex-wrap shrink-0">
+            {/* Academic Year Selector */}
+            <div className="relative">
+              <select
+                value={academicYear}
+                onChange={(e) => setAcademicYear(e.target.value)}
+                className="appearance-none bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold rounded-xl px-4 py-2.5 pr-8 outline-none focus:ring-2 focus:ring-white/50 transition-colors shadow-lg cursor-pointer"
+              >
+                {academicYearList.length > 0 ? (
+                  academicYearList.map(y => (
+                    <option key={y._id} value={y.year} className="text-slate-900">
+                      AY {y.year} {y.isCurrent ? '(Active)' : ''}
+                    </option>
+                  ))
+                ) : (
+                  <option value={academicYear} className="text-slate-900">AY {academicYear}</option>
+                )}
+              </select>
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              </div>
+            </div>
+
             <Link
               to="/faculty/upload"
               className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-blue-600/30 active:scale-95 cursor-pointer"
@@ -370,7 +412,7 @@ export default function FacultyDashboard() {
       {/* PBAS Modal */}
       <PBASAppraisalModal
         isOpen={showPBAS}
-        onClose={() => { setShowPBAS(false); fetchPBASScore(); }}
+        onClose={() => { setShowPBAS(false); fetchPBASScore(academicYear); }}
         facultyName={displayName}
         designation={profile?.designation}
         facultyId={profile?._id}

@@ -7,8 +7,10 @@ import {
 } from 'lucide-react';
 import { hodApi } from '../../api/services';
 import { emitRealtimeEvent, subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
+import PBASApprovalsTab from './PBASApprovalsTab';
 
 export default function HodApprovals() {
+  const [mainTab, setMainTab] = useState('UPLOADS'); // 'UPLOADS' | 'PBAS'
   const [activeTab, setActiveTab] = useState('PENDING'); // 'PENDING' | 'APPROVED' | 'REJECTED'
   const [pendingQueue, setPendingQueue]   = useState([]);
   const [approvedQueue, setApprovedQueue] = useState([]);
@@ -176,12 +178,38 @@ export default function HodApprovals() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Department Approvals</h1>
           <p className="text-slate-500 text-xs mt-0.5">
-            Review and approve faculty research submissions. Departmental approval is final and immediately awards academic credits.
+            Review and approve faculty submissions for your department.
           </p>
         </div>
-
-        {/* Tab Filter Pills */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200 self-start">
+        
+        {/* Main Section Toggle */}
+        <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200">
+          <button
+            onClick={() => setMainTab('UPLOADS')}
+            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+              mainTab === 'UPLOADS' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Research Uploads
+          </button>
+          <button
+            onClick={() => setMainTab('PBAS')}
+            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+              mainTab === 'PBAS' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            PBAS Appraisals
+          </button>
+        </div>
+      </div>
+      
+      {mainTab === 'PBAS' ? (
+        <PBASApprovalsTab />
+      ) : (
+        <>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Tab Filter Pills for Uploads */}
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200 self-start">
           <button
             onClick={() => handleTabChange('PENDING')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
@@ -701,6 +729,8 @@ export default function HodApprovals() {
           </motion.div>
         )}
       </AnimatePresence>
+        </>
+      )}
     </div>
   );
 }

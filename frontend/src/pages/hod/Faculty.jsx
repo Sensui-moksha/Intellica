@@ -4,7 +4,7 @@ import {
   Users, Search, CheckCircle, Loader2, UserCheck,
   Clock, Plus, X, AlertTriangle, Building2, ShieldCheck, Check, Calculator
 } from 'lucide-react';
-import { hodApi, pbasApi } from '../../api/services';
+import { hodApi, pbasApi, academicYearApi } from '../../api/services';
 
 export default function HodFaculty() {
   const [approvedFaculty, setApprovedFaculty] = useState([]);
@@ -24,6 +24,21 @@ export default function HodFaculty() {
   const [toastMsg, setToastMsg]               = useState('');
   const [modalError, setModalError]           = useState('');
 
+  const [academicYear, setAcademicYear] = useState('');
+  const [academicYearList, setAcademicYearList] = useState([]);
+
+  // Fetch Academic Years on mount
+  useEffect(() => {
+    academicYearApi.getAll().then(res => {
+      const list = Array.isArray(res.data) ? res.data : [];
+      if (list.length > 0) {
+        setAcademicYearList(list);
+        const current = list.find(y => y.isCurrent) || list[0];
+        setAcademicYear(current.year);
+      }
+    }).catch(() => {});
+  }, []);
+
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -39,13 +54,13 @@ export default function HodFaculty() {
     setTimeout(() => setToastMsg(''), 3500);
   };
 
-  const fetchFaculty = () => {
+  const fetchFaculty = (yearToFetch) => {
     setLoading(true);
     Promise.all([
       hodApi.getFacultyList(),
       hodApi.getPendingFaculty(),
       hodApi.getProfile(),
-      pbasApi.getDeptAppraisals('2025-26').catch(() => ({ data: [] }))
+      pbasApi.getDeptAppraisals(yearToFetch || new Date().getFullYear().toString()).catch(() => ({ data: [] }))
     ]).then(([appRes, pendRes, profRes, pbasRes]) => {
       setApprovedFaculty(Array.isArray(appRes.data) ? appRes.data : appRes.data?.faculty || []);
       setPendingFaculty(Array.isArray(pendRes.data) ? pendRes.data : pendRes.data?.faculty || []);
@@ -63,15 +78,17 @@ export default function HodFaculty() {
   };
 
   useEffect(() => {
-    fetchFaculty();
-  }, []);
+    if (academicYear) {
+      fetchFaculty(academicYear);
+    }
+  }, [academicYear]);
 
   const handleApprove = async (id) => {
     setActing(true);
     try {
       await hodApi.approveFaculty(id);
       showToast('Faculty registration approved!');
-      fetchFaculty();
+      fetchFaculty(academicYear);
     } catch (e) {
       console.error(e);
     } finally {
@@ -84,7 +101,7 @@ export default function HodFaculty() {
     try {
       await hodApi.discussionFaculty(id, {});
       showToast('Faculty called for discussion.');
-      fetchFaculty();
+      fetchFaculty(academicYear);
     } catch (e) {
       console.error(e);
     } finally {
@@ -116,7 +133,7 @@ export default function HodFaculty() {
         googleScholar: '', vidwanId: '', scopusId: ''
       });
       setTab('PENDING'); // Switch to pending tab to see the new entry
-      fetchFaculty();
+      fetchFaculty(academicYear);
     } catch (err) {
       setModalError(err.response?.data?.message || 'Failed to create faculty member. Please try again.');
     } finally {
@@ -192,6 +209,28 @@ export default function HodFaculty() {
               <Clock className="w-3.5 h-3.5" />
               Pending Admin ({pendingFaculty.length})
             </button>
+          </div>
+
+          {/* Academic Year Selector */}
+          <div className="relative">
+            <select
+              value={academicYear}
+              onChange={(e) => setAcademicYear(e.target.value)}
+              className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl px-4 py-2 pr-8 outline-none focus:ring-2 focus:ring-blue-500/50 transition-colors shadow-xs cursor-pointer"
+            >
+              {academicYearList.length > 0 ? (
+                academicYearList.map(y => (
+                  <option key={y._id} value={y.year}>
+                    AY {y.year} {y.isCurrent ? '(Active)' : ''}
+                  </option>
+                ))
+              ) : (
+                <option value={academicYear}>AY {academicYear}</option>
+              )}
+            </select>
+            <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
           </div>
 
           {/* Add Faculty CTA Button */}

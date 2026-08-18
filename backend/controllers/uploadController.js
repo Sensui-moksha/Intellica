@@ -140,7 +140,23 @@ res.status(201).json({ message:"Upload submitted successfully", upload });
 exports.getMyUploads = async(req,res)=>{
 try{
 const userId = req.user.id;
-const uploads = await Upload.find({ faculty:userId }).sort({createdAt:-1});
+let query = { faculty:userId };
+
+if (req.query.academicYear) {
+  const parts = req.query.academicYear.split("-");
+  if (parts.length === 2) {
+    const startYear = parseInt(parts[0].length === 2 ? `20${parts[0]}` : parts[0], 10);
+    const endYear = parseInt(parts[1].length === 2 ? `20${parts[1]}` : parts[1], 10);
+    if (!isNaN(startYear) && !isNaN(endYear)) {
+      query.$or = [
+        { year: { $in: [startYear, endYear] } },
+        { archivedYear: req.query.academicYear }
+      ];
+    }
+  }
+}
+
+const uploads = await Upload.find(query).sort({createdAt:-1});
 res.json(uploads);
 }catch(err){
 console.error(err);

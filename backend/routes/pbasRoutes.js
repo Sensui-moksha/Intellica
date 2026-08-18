@@ -21,6 +21,8 @@ router.post("/sync-activities",   authMiddleware, authorizeRoles("FACULTY", "HOD
 router.post("/",                  authMiddleware, authorizeRoles("FACULTY", "HOD", "ADMIN"), pbas.saveAppraisal);
 router.get("/my/:academicYear",   authMiddleware, authorizeRoles("FACULTY", "HOD", "ADMIN"), pbas.getMyAppraisal);
 router.put("/:id/submit",         authMiddleware, authorizeRoles("FACULTY", "HOD"), pbas.submitAppraisal);
+router.put("/:id/recall",         authMiddleware, authorizeRoles("FACULTY", "HOD"), pbas.recallAppraisal);
+router.put("/:id/revision",       authMiddleware, authorizeRoles("HOD", "ADMIN"), pbas.requestRevision);
 
 // ── Faculty score (for cards — HOD/Admin can view any faculty's score) ──
 router.get("/faculty-score/:facultyId", authMiddleware, authorizeRoles("FACULTY", "HOD", "ADMIN"), pbas.getFacultyScore);

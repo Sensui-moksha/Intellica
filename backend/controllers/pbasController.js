@@ -187,6 +187,73 @@ exports.submitAppraisal = async (req, res) => {
 };
 
 /**
+ * PUT /api/pbas/:id/recall
+ * Recall a submitted PBAS appraisal back to DRAFT state.
+ */
+exports.recallAppraisal = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    const appraisal = await PBASAppraisal.findOne({ _id: id, faculty: userId });
+    if (!appraisal) {
+      return res.status(404).json({ message: "Appraisal not found." });
+    }
+
+    if (appraisal.status !== "SUBMITTED") {
+      return res.status(400).json({ message: "Only SUBMITTED appraisals can be recalled." });
+    }
+
+    appraisal.status = "DRAFT";
+    await appraisal.save();
+
+    res.json({ message: "Appraisal recalled successfully.", appraisal });
+  } catch (err) {
+    console.error("[PBAS] Recall error:", err);
+    res.status(500).json({ message: "Failed to recall appraisal." });
+  }
+};
+
+/**
+ * PUT /api/pbas/:id/revision
+ * HOD or Admin requests a revision for a submitted PBAS appraisal.
+ */
+exports.requestRevision = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { comment } = req.body;
+
+    const appraisal = await PBASAppraisal.findById(id);
+    if (!appraisal) {
+      return res.status(404).json({ message: "Appraisal not found." });
+    }
+
+    if (req.user.role === "HOD") {
+      const faculty = await Faculty.findById(appraisal.faculty);
+      if (!faculty || faculty.department !== req.user.department) {
+        return res.status(403).json({ message: "Access denied — faculty not in your department." });
+      }
+    }
+
+    if (appraisal.status !== "SUBMITTED" && appraisal.status !== "HOD_APPROVED") {
+      return res.status(400).json({ message: "Only SUBMITTED or HOD_APPROVED appraisals can be sent for revision." });
+    }
+
+    appraisal.status = "REVISION_REQUIRED";
+    if (comment) {
+      appraisal.hodComment = comment;
+    }
+    
+    await appraisal.save();
+
+    res.json({ message: "Appraisal sent back for revision.", appraisal });
+  } catch (err) {
+    console.error("[PBAS] Revision error:", err);
+    res.status(500).json({ message: "Failed to request revision." });
+  }
+};
+
+/**
  * GET /api/pbas/review/:facultyId/:academicYear
  * HOD or Admin reviews a specific faculty's appraisal.
  * Auto-calculates from activities and designation if not yet saved.
@@ -406,7 +473,7 @@ exports.getFacultyScore = async (req, res) => {
     }
 
     const role = mapDesignationToRole(faculty.designation);
-    const academicYear = "2025-26";
+    const academicYear = req.query.academicYear || "2026-27";
 
     // Check if a saved appraisal exists
     const appraisal = await PBASAppraisal.findOne({ faculty: facultyId, academicYear })
