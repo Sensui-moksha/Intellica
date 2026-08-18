@@ -6,11 +6,10 @@ import {
   Calendar, Trophy, Award, Bookmark, ExternalLink,
   Building2, Shield, MapPin, Users, TrendingUp, BarChart2, Calculator
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { facultyApi, rankingApi, authApi, activityApi, pbasApi } from '../../api/services';
 import { resolveProfileImageUrl } from '../../components/Header';
 import { subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
-import PBASAppraisalModal from '../../components/pbas/PBASAppraisalModal';
 import { academicYearApi } from '../../api/services';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
@@ -30,7 +29,7 @@ export default function FacultyDashboard() {
   const [rankings, setRankings]     = useState([]);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading]       = useState(true);
-  const [showPBAS, setShowPBAS]     = useState(false);
+  const navigate = useNavigate();
   const [pbasScore, setPbasScore]   = useState(null);
   const [imgError, setImgError]     = useState(false);
 
@@ -385,7 +384,7 @@ export default function FacultyDashboard() {
       <motion.div
         variants={itemVariants}
         whileHover={{ y: -2 }}
-        onClick={() => setShowPBAS(true)}
+        onClick={() => navigate('/faculty/pbas-appraisal')}
         className="bg-gradient-to-br from-indigo-50 via-white to-violet-50 rounded-3xl p-5 border border-indigo-200/60 flex items-center justify-between hover:shadow-md transition-all shadow-xs cursor-pointer group"
       >
         <div className="flex items-center gap-4">
@@ -408,15 +407,6 @@ export default function FacultyDashboard() {
           )}
         </div>
       </motion.div>
-
-      {/* PBAS Modal */}
-      <PBASAppraisalModal
-        isOpen={showPBAS}
-        onClose={() => { setShowPBAS(false); fetchPBASScore(academicYear); }}
-        facultyName={displayName}
-        designation={profile?.designation}
-        facultyId={profile?._id}
-      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         

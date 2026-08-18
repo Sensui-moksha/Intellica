@@ -180,8 +180,8 @@ exports.recallAppraisal = async (req, res) => {
       return res.status(404).json({ message: "Appraisal not found." });
     }
 
-    if (appraisal.status !== "SUBMITTED") {
-      return res.status(400).json({ message: "Only SUBMITTED appraisals can be recalled." });
+    if (appraisal.status === "DRAFT" || appraisal.status === "REVISION_REQUIRED") {
+      return res.status(400).json({ message: "Appraisal is already editable." });
     }
 
     appraisal.status = "DRAFT";

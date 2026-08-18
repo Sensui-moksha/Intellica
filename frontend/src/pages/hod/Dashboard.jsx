@@ -6,11 +6,10 @@ import {
   Calendar, ArrowRight, Hourglass, Bookmark, ExternalLink,
   Building2, Shield, MapPin, Calculator
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { hodApi, rankingApi, authApi, activityApi, pbasApi } from '../../api/services';
 import { resolveProfileImageUrl } from '../../components/Header';
 import { subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
-import PBASAppraisalModal from '../../components/pbas/PBASAppraisalModal';
 import { academicYearApi } from '../../api/services';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
@@ -30,7 +29,7 @@ export default function HodDashboard() {
   const [rankings, setRankings]     = useState([]);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading]       = useState(true);
-  const [showPBAS, setShowPBAS]     = useState(false);
+  const navigate = useNavigate();
   const [pbasScore, setPbasScore]   = useState(null);
   const [pendingPbasCount, setPendingPbasCount] = useState(0);
   const [imgError, setImgError]     = useState(false);
@@ -421,7 +420,7 @@ export default function HodDashboard() {
       <motion.div
         variants={itemVariants}
         whileHover={{ y: -2 }}
-        onClick={() => setShowPBAS(true)}
+        onClick={() => navigate('/hod/pbas-appraisal')}
         className="bg-gradient-to-br from-indigo-50 via-white to-violet-50 rounded-3xl p-5 border border-indigo-200/60 flex items-center justify-between hover:shadow-md transition-all shadow-xs cursor-pointer group"
       >
         <div className="flex items-center gap-4">
@@ -444,15 +443,6 @@ export default function HodDashboard() {
           )}
         </div>
       </motion.div>
-
-      {/* PBAS Modal */}
-      <PBASAppraisalModal
-        isOpen={showPBAS}
-        onClose={() => { setShowPBAS(false); fetchPBASScore(academicYear); }}
-        facultyName={displayName}
-        designation={profile?.designation || 'Professor & HOD'}
-        facultyId={profile?._id}
-      />
 
       {/* ── LEADERBOARDS ROW ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -307,14 +307,14 @@ return (
               }`}>
               {appraisalStatus}
             </span>
-            {appraisalStatus === 'SUBMITTED' && (
+            {isReadOnly && (
               <button
                 onClick={handleRecall}
                 disabled={recalling}
                 className="px-3 py-1 rounded-xl text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 transition-colors shadow-sm disabled:opacity-50 flex items-center gap-1.5 cursor-pointer z-10 relative ml-2"
               >
                 {recalling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                Recall Submission
+                Unlock / Edit Form
               </button>
             )}
           </div>
