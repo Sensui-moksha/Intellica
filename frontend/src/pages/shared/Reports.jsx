@@ -11,7 +11,6 @@ import {
 import { reportApi, authApi, pbasApi, academicYearApi } from '../../api/services';
 import { resolveProfileImageUrl, getDocumentUrl } from '../../components/Header';
 import { subscribeToRealtimeEvent, SYNC_EVENTS } from '../../utils/syncEvents';
-import PBASAppraisalModal from '../../components/pbas/PBASAppraisalModal';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
 
@@ -23,7 +22,6 @@ export default function ReportsAndAnalytics() {
   const [portfolioData, setPortfolioData]     = useState(null);
   const [loadingPortfolio, setLoadingPortfolio] = useState(false);
   const [currentFacultyPBAS, setCurrentFacultyPBAS] = useState(null);
-  const [showPBASModal, setShowPBASModal]     = useState(false);
   const [pbasMap, setPbasMap]                 = useState({});
   const [searchQuery, setSearchQuery]         = useState('');
   const [activeWorkTab, setActiveWorkTab]     = useState('ALL');
@@ -705,17 +703,6 @@ export default function ReportsAndAnalytics() {
                               />
                             </div>
                           </div>
-
-                          <div className="pt-2 flex justify-end">
-                            <button
-                              type="button"
-                              onClick={() => setShowPBASModal(true)}
-                              className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition-all cursor-pointer"
-                            >
-                              <Calculator className="w-3.5 h-3.5" />
-                              <span>Open / Recalculate PBAS Form</span>
-                            </button>
-                          </div>
                         </>
                       ) : (
                         <div className="p-4 bg-white border border-dashed border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
@@ -724,36 +711,12 @@ export default function ReportsAndAnalytics() {
                               No PBAS appraisal has been recorded for AY 2025-26 yet.
                             </p>
                             <p className="text-[11px] text-slate-400 mt-0.5">
-                              You can initialize or evaluate this faculty member's PBAS appraisal now.
+                              Faculty member has not submitted their appraisal for this year.
                             </p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setShowPBASModal(true)}
-                            className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition-all cursor-pointer shrink-0"
-                          >
-                            <Calculator className="w-3.5 h-3.5" />
-                            <span>Evaluate / Open PBAS Form</span>
-                          </button>
                         </div>
                       )}
                     </div>
-
-                    {/* PBAS Appraisal Modal */}
-                    <PBASAppraisalModal
-                      isOpen={showPBASModal}
-                      onClose={() => {
-                        setShowPBASModal(false);
-                        if (selectedFacultyId) {
-                          pbasApi.getFacultyScore(selectedFacultyId).then(res => {
-                            if (res.data?.score) setCurrentFacultyPBAS(res.data);
-                          }).catch(() => {});
-                        }
-                      }}
-                      facultyName={portfolioData.user?.name}
-                      designation={portfolioData.user?.designation}
-                      facultyId={selectedFacultyId}
-                    />
 
                     {/* ── CATEGORIZED WORK CARDS (BOOKS, JOURNALS, CONFERENCES, ETC.) ── */}
                     <div className="space-y-4">

@@ -13,31 +13,6 @@ const HOD = require("../models/HOD");
 const { calculatePBAS } = require("../services/pbasCalculator");
 const { getRulesForRole, mapDesignationToRole, RULES_VERSION } = require("../constants/pbasRules");
 
-/**
- * POST /api/pbas/calculate
- * Stateless calculation — does not persist. Returns full scored result.
- */
-exports.calculate = async (req, res) => {
-  try {
-    const { role, semester1, semester2 } = req.body;
-
-    if (!role) {
-      return res.status(400).json({ message: "Role is required (ASSISTANT_PROFESSOR, ASSOCIATE_PROFESSOR, PROFESSOR)." });
-    }
-
-    const sem2 = (semester2 && Object.keys(semester2).length > 0) ? semester2 : null;
-    const result = calculatePBAS(role, semester1 || {}, sem2);
-
-    if (!result.success) {
-      return res.status(400).json({ message: result.error, validRoles: result.validRoles });
-    }
-
-    res.json(result);
-  } catch (err) {
-    console.error("[PBAS] Calculate error:", err);
-    res.status(500).json({ message: "PBAS calculation failed." });
-  }
-};
 
 /**
  * POST /api/pbas

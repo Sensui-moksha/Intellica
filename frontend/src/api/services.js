@@ -147,7 +147,6 @@ export const activityApi = {
 /* ── PBAS APPRAISAL ── */
 export const pbasApi = {
   getRules:           (role)      => api.get(`/pbas/rules/${role}`),
-  calculate:          (data)      => api.post('/pbas/calculate', data),
   syncActivities:     (data)      => api.post('/pbas/sync-activities', data),
   saveAppraisal:      (data)      => api.post('/pbas', data),
   getMyAppraisal:     (year)      => api.get(`/pbas/my/${year}`),

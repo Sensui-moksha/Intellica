@@ -16,7 +16,6 @@ const pbas = require("../controllers/pbasController");
 router.get("/rules/:role", authMiddleware, pbas.getRules);
 
 // ── Faculty & Admin evaluation endpoints ──
-router.post("/calculate",         authMiddleware, authorizeRoles("FACULTY", "HOD", "ADMIN"), pbas.calculate);
 router.post("/sync-activities",   authMiddleware, authorizeRoles("FACULTY", "HOD", "ADMIN"), pbas.syncActivities);
 router.post("/",                  authMiddleware, authorizeRoles("FACULTY", "HOD", "ADMIN"), pbas.saveAppraisal);
 router.get("/my/:academicYear",   authMiddleware, authorizeRoles("FACULTY", "HOD", "ADMIN"), pbas.getMyAppraisal);
