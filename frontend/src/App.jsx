@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { initSocketClient } from './utils/socket';
+import ErrorBoundary from './components/ErrorBoundary';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
@@ -38,61 +39,63 @@ function App() {
   }, []);
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/onboarding" element={<Onboarding />} />
+    <ErrorBoundary>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/onboarding" element={<Onboarding />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={<DashboardLayout role="ADMIN" />}>
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="departments" element={<AdminDepartments />} />
-          <Route path="faculty" element={<AdminFaculty />} />
-          <Route path="approvals" element={<AdminApprovals />} />
-          <Route path="credit-config" element={<AdminCreditConfig />} />
-          <Route path="reports" element={<ReportsAndAnalytics />} />
-          <Route path="calendar" element={<DepartmentCalendar />} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="pbas-appraisal" element={<PBASAppraisal />} />
-        </Route>
+          {/* Admin Routes */}
+          <Route path="/admin" element={<DashboardLayout role="ADMIN" />}>
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="departments" element={<AdminDepartments />} />
+            <Route path="faculty" element={<AdminFaculty />} />
+            <Route path="approvals" element={<AdminApprovals />} />
+            <Route path="credit-config" element={<AdminCreditConfig />} />
+            <Route path="reports" element={<ReportsAndAnalytics />} />
+            <Route path="calendar" element={<DepartmentCalendar />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="pbas-appraisal" element={<PBASAppraisal />} />
+          </Route>
 
-        {/* HOD Routes */}
-        <Route path="/hod" element={<DashboardLayout role="HOD" />}>
-          <Route path="dashboard" element={<HodDashboard />} />
-          <Route path="faculty" element={<HodFaculty />} />
-          <Route path="approvals" element={<HodApprovals />} />
-          <Route path="upload" element={<FacultyUpload />} />
-          <Route path="my-uploads" element={<FacultyMyActivities />} />
-          <Route path="my-activities" element={<FacultyMyActivities />} />
-          <Route path="reports" element={<ReportsAndAnalytics />} />
-          <Route path="standings" element={<ReportsAndAnalytics />} />
-          <Route path="calendar" element={<DepartmentCalendar />} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="pbas-appraisal" element={<PBASAppraisal />} />
-        </Route>
+          {/* HOD Routes */}
+          <Route path="/hod" element={<DashboardLayout role="HOD" />}>
+            <Route path="dashboard" element={<HodDashboard />} />
+            <Route path="faculty" element={<HodFaculty />} />
+            <Route path="approvals" element={<HodApprovals />} />
+            <Route path="upload" element={<FacultyUpload />} />
+            <Route path="my-uploads" element={<FacultyMyActivities />} />
+            <Route path="my-activities" element={<FacultyMyActivities />} />
+            <Route path="reports" element={<ReportsAndAnalytics />} />
+            <Route path="standings" element={<ReportsAndAnalytics />} />
+            <Route path="calendar" element={<DepartmentCalendar />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="pbas-appraisal" element={<PBASAppraisal />} />
+          </Route>
 
-        {/* Faculty Routes */}
-        <Route path="/faculty" element={<DashboardLayout role="FACULTY" />}>
-          <Route path="dashboard" element={<FacultyDashboard />} />
-          <Route path="upload" element={<FacultyUpload />} />
-          <Route path="my-uploads" element={<FacultyMyActivities />} />
-          <Route path="my-activities" element={<FacultyMyActivities />} />
-          <Route path="standings" element={<ReportsAndAnalytics />} />
-          <Route path="reports" element={<ReportsAndAnalytics />} />
-          <Route path="calendar" element={<DepartmentCalendar />} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="pbas-appraisal" element={<PBASAppraisal />} />
-        </Route>
-      </Routes>
-    </Router>
+          {/* Faculty Routes */}
+          <Route path="/faculty" element={<DashboardLayout role="FACULTY" />}>
+            <Route path="dashboard" element={<FacultyDashboard />} />
+            <Route path="upload" element={<FacultyUpload />} />
+            <Route path="my-uploads" element={<FacultyMyActivities />} />
+            <Route path="my-activities" element={<FacultyMyActivities />} />
+            <Route path="standings" element={<ReportsAndAnalytics />} />
+            <Route path="reports" element={<ReportsAndAnalytics />} />
+            <Route path="calendar" element={<DepartmentCalendar />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="pbas-appraisal" element={<PBASAppraisal />} />
+          </Route>
+        </Routes>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

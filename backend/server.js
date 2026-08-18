@@ -178,6 +178,13 @@ if (fs.existsSync(activeDistDir)) {
   app.use(express.static(activeDistDir, {
     maxAge: "1d",
     etag: true,
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith("index.html")) {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        res.setHeader("Pragma", "no-cache");
+        res.setHeader("Expires", "0");
+      }
+    }
   }));
 }
 
@@ -198,6 +205,9 @@ app.get("*", (req, res) => {
   const indexPath = path.join(currentDistDir, "index.html");
 
   if (fs.existsSync(indexPath)) {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     return res.sendFile(indexPath);
   }
 
