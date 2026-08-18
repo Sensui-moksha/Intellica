@@ -6,7 +6,7 @@ import {
   SlidersHorizontal, ListOrdered, Settings,
   LogOut, HelpCircle, Send, BarChart3, Calendar, FileText, ClipboardList
 } from 'lucide-react';
-import { adminApi, hodApi, authApi } from '../api/services';
+import { adminApi, hodApi, authApi, academicYearApi, pbasApi } from '../api/services';
 
 import micEmblem from '../assets/mic_emblem.png';
 
@@ -26,17 +26,38 @@ export default function Sidebar({ role }) {
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
-    if (role === 'HOD') {
-      hodApi.getPendingUploads().then(res => {
-        const list = Array.isArray(res.data) ? res.data : res.data?.uploads || [];
-        setPendingCount(list.length);
-      }).catch(() => { });
-    } else if (role === 'ADMIN') {
-      adminApi.getPendingUploads().then(res => {
-        const list = Array.isArray(res.data) ? res.data : res.data?.uploads || [];
-        setPendingCount(list.length);
-      }).catch(() => { });
-    }
+    const fetchCounts = async () => {
+      let uploadCount = 0;
+      let pbasCount = 0;
+
+      try {
+        if (role === 'HOD') {
+          const res = await hodApi.getPendingUploads();
+          const list = Array.isArray(res.data) ? res.data : res.data?.uploads || [];
+          uploadCount = list.length;
+        } else if (role === 'ADMIN') {
+          const res = await adminApi.getPendingUploads();
+          const list = Array.isArray(res.data) ? res.data : res.data?.uploads || [];
+          uploadCount = list.length;
+        }
+      } catch (err) {}
+
+      try {
+        if (role === 'HOD') {
+          const yrRes = await academicYearApi.getCurrent().catch(() => null);
+          const yr = yrRes?.data?.year;
+          if (yr) {
+            const pbasRes = await pbasApi.getDeptAppraisals(yr).catch(() => null);
+            const pbasList = Array.isArray(pbasRes?.data) ? pbasRes.data : [];
+            pbasCount = pbasList.filter(a => a.status === 'SUBMITTED').length;
+          }
+        }
+      } catch (err) {}
+
+      setPendingCount(uploadCount + pbasCount);
+    };
+
+    fetchCounts();
   }, [role, location.pathname]);
 
   const navItems = {
