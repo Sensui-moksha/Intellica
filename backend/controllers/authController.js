@@ -27,23 +27,50 @@ function resolveValidProfileImage(user) {
 
   const baseDir = getUploadBaseDir();
 
-  // Check if file exists relative to uploads folder
+  // 1. Direct path check
   if (fs.existsSync(path.join(baseDir, p))) {
     return p.replace(/\\/g, "/");
   }
 
-  // Check user specific profile_pic folder
-  try {
-    const expectedRel = getUserRelativePath(user, "profile_pic", path.basename(p));
-    if (fs.existsSync(path.join(baseDir, expectedRel))) {
-      // Auto-heal database record in background
-      user.profileImage = expectedRel;
-      if (typeof user.save === 'function') {
-        user.save().catch(() => {});
+  // 2. Check alternative extensions (.png, .jpg, .jpeg, .webp)
+  const ext = path.extname(p);
+  if (ext) {
+    const withoutExt = p.slice(0, p.length - ext.length);
+    for (const altExt of [".png", ".jpg", ".jpeg", ".webp"]) {
+      const altRel = `${withoutExt}${altExt}`;
+      if (fs.existsSync(path.join(baseDir, altRel))) {
+        user.profileImage = altRel;
+        if (typeof user.save === 'function') user.save().catch(() => {});
+        return altRel.replace(/\\/g, "/");
       }
-      return expectedRel;
+    }
+  }
+
+  // 3. Check user specific profile_pic folder
+  try {
+    const baseName = path.basename(p);
+    const baseNameNoExt = path.basename(p, ext);
+    for (const altExt of [ext || ".jpg", ".png", ".jpeg", ".webp"]) {
+      const expectedRel = getUserRelativePath(user, "profile_pic", `${baseNameNoExt}${altExt}`);
+      if (fs.existsSync(path.join(baseDir, expectedRel))) {
+        user.profileImage = expectedRel;
+        if (typeof user.save === 'function') user.save().catch(() => {});
+        return expectedRel.replace(/\\/g, "/");
+      }
     }
   } catch (_) {}
+
+  // 4. Check legacy admin folder (admin/profile_image.*)
+  if (user.role === "ADMIN" || user.department === "ADMIN" || user.regId === "admin") {
+    for (const altExt of [".png", ".jpg", ".jpeg", ".webp"]) {
+      const adminRel = `admin/profile_image${altExt}`;
+      if (fs.existsSync(path.join(baseDir, adminRel))) {
+        user.profileImage = adminRel;
+        if (typeof user.save === 'function') user.save().catch(() => {});
+        return adminRel;
+      }
+    }
+  }
 
   // File not found on disk — return empty string to prevent 404s
   return "";

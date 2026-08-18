@@ -102,6 +102,44 @@ app.use("/uploads", express.static(getUploadBaseDir(), {
   },
 }));
 
+// Smart fallback for uploads if exact file is missing (e.g. extension mismatch .jpg vs .png or legacy paths)
+app.use("/uploads", (req, res, next) => {
+  try {
+    const reqRelPath = decodeURI(req.path).replace(/^\/+/, "");
+    if (!reqRelPath) return next();
+
+    const baseDir = getUploadBaseDir();
+    const directPath = path.join(baseDir, reqRelPath);
+    if (fs.existsSync(directPath)) {
+      return res.sendFile(directPath);
+    }
+
+    // Try alternative image extensions (.png, .jpg, .jpeg, .webp)
+    const ext = path.extname(reqRelPath);
+    if (ext) {
+      const withoutExt = reqRelPath.slice(0, reqRelPath.length - ext.length);
+      for (const altExt of [".png", ".jpg", ".jpeg", ".webp"]) {
+        const altFile = path.join(baseDir, `${withoutExt}${altExt}`);
+        if (fs.existsSync(altFile)) {
+          return res.sendFile(altFile);
+        }
+      }
+    }
+
+    // If looking for admin profile pic, check legacy admin/ folder
+    if (reqRelPath.includes("ADMIN") && reqRelPath.includes("profile_pic")) {
+      for (const altExt of [".png", ".jpg", ".jpeg", ".webp"]) {
+        const adminFile = path.join(baseDir, "admin", `profile_image${altExt}`);
+        if (fs.existsSync(adminFile)) {
+          return res.sendFile(adminFile);
+        }
+      }
+    }
+  } catch (_) {}
+
+  return res.status(404).end();
+});
+
 /* ═══════════════════════════════════════════════════════════════════════════
    API ROUTES
    Auth routes carry their own per-endpoint rate limiters (authRoutes.js)
