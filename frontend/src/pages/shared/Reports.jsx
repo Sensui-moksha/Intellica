@@ -38,7 +38,9 @@ export default function ReportsAndAnalytics() {
     try {
       const [res, pbasRes] = await Promise.all([
         reportApi.getAnalytics({ year: yearToLoad }),
-        pbasApi.getAllAppraisals(yearToLoad).catch(() => ({ data: [] }))
+        isHOD 
+          ? pbasApi.getDeptAppraisals(yearToLoad).catch(() => ({ data: [] }))
+          : pbasApi.getAllAppraisals(yearToLoad).catch(() => ({ data: [] }))
       ]);
       const fetchedData = res.data || { departments: [], role };
       setData(fetchedData);
