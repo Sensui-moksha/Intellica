@@ -42,6 +42,7 @@ const [generalInfo, setGeneralInfo] = useState({
 });
 const [semester1, setSemester1] = useState({});
 const [semester2, setSemester2] = useState({});
+const [activeSemesterView, setActiveSemesterView] = useState('semester1');
 const [appraisalId, setAppraisalId] = useState(null);
 const [appraisalStatus, setAppraisalStatus] = useState('DRAFT');
 
@@ -169,8 +170,9 @@ const calcResult = useMemo(() => {
 }, [rules, semester1, semester2]);
 
 // Input change handler for section data
-const handleInputChange = useCallback((sectionKey, paramKey, fieldKey, value) => {
-  setSemester1(prev => ({
+const handleInputChange = useCallback((sectionKey, paramKey, fieldKey, value, targetSemester = 'semester1') => {
+  const setSemester = targetSemester === 'semester1' ? setSemester1 : setSemester2;
+  setSemester(prev => ({
     ...prev,
     [sectionKey]: {
       ...prev[sectionKey],
@@ -334,7 +336,10 @@ return (
         return (
           <button
             key={s.key}
-            onClick={() => setStep(i)}
+            onClick={() => {
+              setStep(i);
+              setActiveSemesterView('semester1');
+            }}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 ${isActive ? 'bg-gradient-to-r ' + s.color + ' text-white shadow-lg scale-105'
                 : isDone ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                   : 'bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100'
@@ -378,13 +383,31 @@ return (
 
         {/* Steps 2-5: Sections I-IV */}
         {step >= 2 && step <= 5 && sectionConfig && (
-          <PBASSection
-            sectionConfig={sectionConfig}
-            sectionResult={sectionResult}
-            inputs={semester1[sectionConfig.key] || {}}
-            onInputChange={handleInputChange}
-            readOnly={isReadOnly}
-          />
+          <div className="space-y-4">
+            {sectionConfig.semesterAveraged && (
+              <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
+                <button
+                  onClick={() => setActiveSemesterView('semester1')}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeSemesterView === 'semester1' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Semester 1 (Odd)
+                </button>
+                <button
+                  onClick={() => setActiveSemesterView('semester2')}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeSemesterView === 'semester2' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Semester 2 (Even)
+                </button>
+              </div>
+            )}
+            <PBASSection
+              sectionConfig={sectionConfig}
+              sectionResult={sectionResult}
+              inputs={activeSemesterView === 'semester1' ? (semester1[sectionConfig.key] || {}) : (semester2[sectionConfig.key] || {})}
+              onInputChange={(s, p, f, v) => handleInputChange(s, p, f, v, sectionConfig.semesterAveraged ? activeSemesterView : 'semester1')}
+              readOnly={isReadOnly}
+            />
+          </div>
         )}
 
         {/* Step 6: Review & Submit */}
@@ -430,7 +453,10 @@ return (
     {/* Navigation + Save */}
     <div className="flex items-center justify-between pt-2">
       <button
-        onClick={() => setStep(Math.max(0, step - 1))}
+        onClick={() => {
+          setStep(Math.max(0, step - 1));
+          setActiveSemesterView('semester1');
+        }}
         disabled={step === 0}
         className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all disabled:opacity-30 cursor-pointer"
       >
@@ -449,7 +475,10 @@ return (
           </button>
         )}
         <button
-          onClick={() => setStep(Math.min(STEPS.length - 1, step + 1))}
+          onClick={() => {
+            setStep(Math.min(STEPS.length - 1, step + 1));
+            setActiveSemesterView('semester1');
+          }}
           disabled={step === STEPS.length - 1}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-30 cursor-pointer"
         >

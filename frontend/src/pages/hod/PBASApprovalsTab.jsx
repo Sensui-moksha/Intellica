@@ -29,6 +29,7 @@ export default function PBASApprovalsTab() {
   
   const [rulesCache, setRulesCache] = useState({});
   const [expandedSection, setExpandedSection] = useState(null);
+  const [activeSemesterView, setActiveSemesterView] = useState('semester1');
 
   // HOD Scores
   const [hodScores, setHodScores] = useState({
@@ -357,7 +358,10 @@ export default function PBASApprovalsTab() {
                         return (
                           <div key={sectionConfig.key} className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50">
                             <button
-                              onClick={() => setExpandedSection(isExpanded ? null : sectionConfig.key)}
+                              onClick={() => {
+                                setExpandedSection(isExpanded ? null : sectionConfig.key);
+                                setActiveSemesterView('semester1');
+                              }}
                               className="w-full flex items-center justify-between p-4 bg-white hover:bg-slate-50 transition-colors"
                             >
                               <div className="flex items-center gap-3">
@@ -380,10 +384,26 @@ export default function PBASApprovalsTab() {
                                   exit={{ height: 0, opacity: 0 }}
                                   className="border-t border-slate-200 p-4 bg-white"
                                 >
+                                  {sectionConfig.semesterAveraged && (
+                                    <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit mb-4">
+                                      <button
+                                        onClick={() => setActiveSemesterView('semester1')}
+                                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeSemesterView === 'semester1' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                      >
+                                        Semester 1 (Odd)
+                                      </button>
+                                      <button
+                                        onClick={() => setActiveSemesterView('semester2')}
+                                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeSemesterView === 'semester2' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                      >
+                                        Semester 2 (Even)
+                                      </button>
+                                    </div>
+                                  )}
                                   <PBASSection
                                     sectionConfig={sectionConfig}
                                     sectionResult={sectionResult}
-                                    inputs={selected.semester1?.[sectionConfig.key] || {}}
+                                    inputs={activeSemesterView === 'semester1' ? (selected.semester1?.[sectionConfig.key] || {}) : (selected.semester2?.[sectionConfig.key] || {})}
                                     onInputChange={() => {}} // Read-only
                                     readOnly={true}
                                   />
