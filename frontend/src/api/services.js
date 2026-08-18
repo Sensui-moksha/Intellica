@@ -30,7 +30,7 @@ export const facultyApi = {
   getProfile:         ()              => api.get('/faculty/profile'),
   updateProfile:      (data)          => api.put('/faculty/update-profile', data),
   getFacultyById:     (id)            => api.get(`/faculty/${id}`),
-  getMyUploads:       ()              => api.get('/uploads/mine'),
+  getMyUploads:       (params)        => api.get('/uploads/mine', { params }),
   createUpload:       (category, form)=> api.post(`/uploads/create/${category}`, form, { headers: { 'Content-Type': 'multipart/form-data' } }),
   updateUpload:       (id, cat, form) => api.put(`/uploads/update/${id}/${cat}`, form, { headers: { 'Content-Type': 'multipart/form-data' } }),
   getMyRank:          ()              => api.get('/rank'),
@@ -152,12 +152,14 @@ export const pbasApi = {
   saveAppraisal:      (data)      => api.post('/pbas', data),
   getMyAppraisal:     (year)      => api.get(`/pbas/my/${year}`),
   submitAppraisal:    (id)        => api.put(`/pbas/${id}/submit`),
-  getFacultyScore:    (fId)       => api.get(`/pbas/faculty-score/${fId}`),
+  getFacultyScore:    (fId, year) => api.get(`/pbas/faculty-score/${fId}`, { params: { academicYear: year } }),
   getForReview:       (fId, year) => api.get(`/pbas/review/${fId}/${year}`),
   getDeptAppraisals:  (year)      => api.get(`/pbas/department/${year}`),
   getAllAppraisals:    (year)      => api.get(`/pbas/all/${year}`),
+  recallAppraisal:    (id)        => api.put(`/pbas/${id}/recall`),
   updateHodScores:    (id, data)  => api.put(`/pbas/${id}/hod-scores`, data),
   updateIfacScores:   (id, data)  => api.put(`/pbas/${id}/ifac-scores`, data),
+  requestRevision:    (id, data)  => api.put(`/pbas/${id}/revision`, data),
 };
 
 /* ── ACADEMIC YEARS & ARCHIVAL ── */
