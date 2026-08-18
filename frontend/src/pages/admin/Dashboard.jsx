@@ -30,6 +30,7 @@ export default function AdminDashboard() {
   const [pbasCount, setPbasCount]   = useState(0);
   const [activeAcademicYear, setActiveAcademicYear] = useState('2025-26');
   const [loading, setLoading]       = useState(true);
+  const [imgError, setImgError]     = useState(false);
 
   const fetchData = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
@@ -135,7 +136,6 @@ export default function AdminDashboard() {
   const maxCredits    = topDeptCredits || 25;
   const pendingCount  = stats?.pendingCount ?? pendingUploads.length;
 
-  const [imgError, setImgError] = useState(false);
   const displayName = profile?.name || localStorage.getItem('userName') || 'Administrator';
   const userInitial = (displayName || 'A').charAt(0).toUpperCase();
   const profileImg = profile?.profileImage || localStorage.getItem('profileImage');

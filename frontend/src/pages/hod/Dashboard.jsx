@@ -31,6 +31,7 @@ export default function HodDashboard() {
   const [loading, setLoading]       = useState(true);
   const [showPBAS, setShowPBAS]     = useState(false);
   const [pbasScore, setPbasScore]   = useState(null);
+  const [imgError, setImgError]     = useState(false);
 
   const fetchData = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
@@ -108,7 +109,6 @@ export default function HodDashboard() {
     </div>
   );
 
-  const [imgError, setImgError] = useState(false);
   const hodDept = (profile?.department || 'CSE').toUpperCase();
   const displayName = profile?.name || localStorage.getItem('userName') || 'moksha';
   const userInitial = (displayName || 'M').charAt(0).toUpperCase();

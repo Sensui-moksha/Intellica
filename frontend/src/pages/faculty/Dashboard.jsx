@@ -31,6 +31,7 @@ export default function FacultyDashboard() {
   const [loading, setLoading]       = useState(true);
   const [showPBAS, setShowPBAS]     = useState(false);
   const [pbasScore, setPbasScore]   = useState(null);
+  const [imgError, setImgError]     = useState(false);
 
   const fetchAll = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
@@ -115,7 +116,6 @@ export default function FacultyDashboard() {
     u => u.status === 'NEEDS_REVISION' || u.status === 'ADMIN_COMMENT' || u.status === 'HOD_COMMENT'
   ).length;
 
-  const [imgError, setImgError] = useState(false);
   const facultyDept = (profile?.department || localStorage.getItem('department') || 'CSE').toUpperCase();
   const displayName = profile?.name || localStorage.getItem('userName') || 'Faculty';
   const userInitial = (displayName || 'F').charAt(0).toUpperCase();
