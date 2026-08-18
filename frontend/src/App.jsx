@@ -66,8 +66,10 @@ function App() {
           <Route path="faculty" element={<HodFaculty />} />
           <Route path="approvals" element={<HodApprovals />} />
           <Route path="upload" element={<FacultyUpload />} />
+          <Route path="my-uploads" element={<FacultyMyActivities />} />
           <Route path="my-activities" element={<FacultyMyActivities />} />
           <Route path="reports" element={<ReportsAndAnalytics />} />
+          <Route path="standings" element={<ReportsAndAnalytics />} />
           <Route path="calendar" element={<DepartmentCalendar />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />
@@ -79,7 +81,10 @@ function App() {
         <Route path="/faculty" element={<DashboardLayout role="FACULTY" />}>
           <Route path="dashboard" element={<FacultyDashboard />} />
           <Route path="upload" element={<FacultyUpload />} />
+          <Route path="my-uploads" element={<FacultyMyActivities />} />
           <Route path="my-activities" element={<FacultyMyActivities />} />
+          <Route path="standings" element={<ReportsAndAnalytics />} />
+          <Route path="reports" element={<ReportsAndAnalytics />} />
           <Route path="calendar" element={<DepartmentCalendar />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />

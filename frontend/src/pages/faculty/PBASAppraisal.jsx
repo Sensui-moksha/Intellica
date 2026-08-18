@@ -9,7 +9,7 @@ import PBASSection from '../../components/pbas/PBASSection';
 import PBASSummarySheet from '../../components/pbas/PBASSummarySheet';
 import PBASGeneralInfo from '../../components/pbas/PBASGeneralInfo';
 import { calculatePBAS } from '../../components/pbas/pbasClientCalculator';
-import { pbasApi } from '../../api/services';
+import { authApi, pbasApi } from '../../api/services';
 
 const STEPS = [
   { key: 'general', label: 'General Information', icon: User, color: 'from-slate-600 to-slate-800' },
@@ -51,10 +51,8 @@ export default function PBASAppraisal() {
     async function load() {
       try {
         // Get faculty profile to determine role
-        const profileRes = await fetch('/api/auth/me', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        });
-        const profileData = await profileRes.json();
+        const profileRes = await authApi.getMe();
+        const profileData = profileRes.data || {};
         setFacultyProfile(profileData);
 
         // Map designation to PBAS role

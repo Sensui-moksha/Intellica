@@ -45,6 +45,18 @@ export default function PBASGeneralInfo({ generalInfo, onChange, role, readOnly 
     }));
   };
 
+  const formatDateForInput = (val) => {
+    if (!val) return '';
+    const s = String(val).trim();
+    if (!s) return '';
+    if (s.includes('T')) return s.split('T')[0];
+    if (/^\d{2}-\d{2}-\d{4}$/.test(s)) {
+      const [d, m, y] = s.split('-');
+      return `${y}-${m}-${d}`;
+    }
+    return s;
+  };
+
   const quals = generalInfo.educationalQualifications || [];
   const inputCls = "w-full px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all disabled:bg-slate-50 disabled:text-slate-400";
   const labelCls = "text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block";
@@ -139,7 +151,7 @@ export default function PBASGeneralInfo({ generalInfo, onChange, role, readOnly 
                 <label className={labelCls}>Date of Joining</label>
                 <input
                   type="date"
-                  value={generalInfo.dateOfJoining || ''}
+                  value={formatDateForInput(generalInfo.dateOfJoining)}
                   onChange={e => update('dateOfJoining', e.target.value)}
                   disabled={readOnly}
                   className={inputCls}
@@ -149,7 +161,7 @@ export default function PBASGeneralInfo({ generalInfo, onChange, role, readOnly 
                 <label className={labelCls}>Date of Birth</label>
                 <input
                   type="date"
-                  value={generalInfo.dateOfBirth || ''}
+                  value={formatDateForInput(generalInfo.dateOfBirth)}
                   onChange={e => update('dateOfBirth', e.target.value)}
                   disabled={readOnly}
                   className={inputCls}
