@@ -156,6 +156,8 @@ export const pbasApi = {
   getForReview:       (fId, year) => api.get(`/pbas/review/${fId}/${year}`),
   getDeptAppraisals:  (year)      => api.get(`/pbas/department/${year}`),
   getAllAppraisals:    (year)      => api.get(`/pbas/all/${year}`),
+  updateHodScores:    (id, data)  => api.put(`/pbas/${id}/hod-scores`, data),
+  updateIfacScores:   (id, data)  => api.put(`/pbas/${id}/ifac-scores`, data),
 };
 
 /* ── ACADEMIC YEARS & ARCHIVAL ── */

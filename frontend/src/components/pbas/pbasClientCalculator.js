@@ -69,6 +69,32 @@ export function calcDirectScore(value, maxScore) {
   return { rawScore: round2(v), finalScore: round2(cap(v, maxScore)), formula: `direct: ${v}` };
 }
 
+export function calcChecklistScore(inputs, config) {
+  const activities = config.activities || [];
+  const roles = config.roles || [];
+  const ppa = safeNum(config.pointsPerActivity);
+  let total = 0;
+  const activityResults = [];
+  for (const act of activities) {
+    const entry = inputs?.[act.key];
+    let actScore = 0, actRole = "NONE", enabled = false;
+    if (entry && (entry.enabled === true || entry === true)) {
+      enabled = true;
+      if (roles.length > 0 && entry.role) {
+        const rc = roles.find(r => r.value === entry.role);
+        actScore = round2(ppa * (rc ? rc.multiplier : 1.0));
+        actRole = entry.role;
+      } else {
+        actScore = ppa;
+        actRole = "CHECKED";
+      }
+    }
+    activityResults.push({ key: act.key, label: act.label, enabled, role: actRole, score: actScore });
+    total += actScore;
+  }
+  return { rawScore: round2(total), finalScore: round2(cap(total, config.maxScore)), formula: `checklist: ${activityResults.filter(a => a.enabled).length}/${activities.length}`, activityResults };
+}
+
 export function calcAmountTierScore(amount, tiers, maxScore, roleMultiplier) {
   const a = safeNum(amount);
   const mult = safeNum(roleMultiplier) || 1;
@@ -87,6 +113,7 @@ export function calcAmountTierScore(amount, tiers, maxScore, roleMultiplier) {
 const FT = {
   LOAD: "LOAD", RATIO: "RATIO", COUNT: "COUNT", THRESHOLD: "THRESHOLD",
   COMPONENT: "COMPONENT", DIRECT: "DIRECT", CONFIGURABLE: "CONFIGURABLE",
+  CHECKLIST: "CHECKLIST",
 };
 
 export function calculateParameter(paramConfig, inputs) {
@@ -183,6 +210,18 @@ export function calculateParameter(paramConfig, inputs) {
           total += cs;
         }
       }
+      // Apply sub-group capping
+      if (paramConfig.subGroupCap && compResults.length > 0) {
+        const sgc = paramConfig.subGroupCap;
+        const groupKeys = sgc.keys || [];
+        let groupTotal = 0;
+        for (const cr of compResults) { if (groupKeys.includes(cr.key)) groupTotal += cr.score; }
+        if (groupTotal > sgc.maxScore) {
+          const ratio = sgc.maxScore / groupTotal;
+          total -= (groupTotal - sgc.maxScore);
+          for (const cr of compResults) { if (groupKeys.includes(cr.key)) { cr.score = round2(cr.score * ratio); cr.formula += ` (capped: ${sgc.label})`; } }
+        }
+      }
       if (paramConfig.amountTiers) {
         const amt = safeNum(inputData.projectAmount);
         const role = inputData.roleInProject || "PI";
@@ -197,6 +236,13 @@ export function calculateParameter(paramConfig, inputs) {
       result.componentResults = compResults;
       for (const comp of paramConfig.components || []) result.inputValues[comp.key] = safeNum(inputData[comp.key]);
       if (!result.formulaExplain) result.formulaExplain = `sum of ${compResults.length} components = ${round2(total)}`;
+      break;
+    }
+    case FT.CHECKLIST: {
+      const c = calcChecklistScore(inputData, paramConfig);
+      result.rawScore = c.rawScore; result.finalScore = c.finalScore;
+      result.formulaExplain = c.formula; result.activityResults = c.activityResults;
+      for (const act of paramConfig.activities || []) result.inputValues[act.key] = inputData?.[act.key] || { enabled: false };
       break;
     }
     default:

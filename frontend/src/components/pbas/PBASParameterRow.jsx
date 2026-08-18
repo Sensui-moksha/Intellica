@@ -29,6 +29,56 @@ export default function PBASParameterRow({ paramConfig, paramResult, inputs, onI
 
   // Determine what input fields to render
   const renderInputFields = () => {
+    // Checklist type — render named activity checkboxes with optional role selection
+    if (formula === 'CHECKLIST' && paramConfig.activities?.length) {
+      const activities = paramConfig.activities;
+      const roles = paramConfig.roles || [];
+      const hasRoles = roles.length > 0;
+
+      return (
+        <div className="mt-2 space-y-1">
+          {activities.map(act => {
+            const entry = inputs?.[act.key] || {};
+            const isChecked = entry.enabled === true || entry === true;
+            const currentRole = entry.role || (roles[0]?.value || '');
+
+            return (
+              <div key={act.key} className="flex items-center gap-2 py-1 px-2 rounded-lg hover:bg-slate-50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={e => {
+                    if (hasRoles) {
+                      onInputChange(act.key, e.target.checked ? { enabled: true, role: currentRole } : { enabled: false });
+                    } else {
+                      onInputChange(act.key, e.target.checked);
+                    }
+                  }}
+                  disabled={readOnly}
+                  className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 shrink-0"
+                />
+                <span className={`text-[10px] font-medium flex-1 min-w-0 ${isChecked ? 'text-slate-800' : 'text-slate-400'}`}>
+                  {act.label}
+                </span>
+                {hasRoles && isChecked && (
+                  <select
+                    value={currentRole}
+                    onChange={e => onInputChange(act.key, { enabled: true, role: e.target.value })}
+                    disabled={readOnly}
+                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-slate-200 bg-white focus:border-blue-500 outline-none"
+                  >
+                    {roles.map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
     // Component type — render sub-component inputs
     if (formula === 'COMPONENT' && components?.length) {
       return (

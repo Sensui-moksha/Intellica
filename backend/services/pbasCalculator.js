@@ -123,6 +123,56 @@ function calcDirectScore(value, maxScore) {
 }
 
 /**
+ * G. Checklist-based scoring: iterate named activities, sum points based on
+ * enabled/role selection. Used for administrative activities.
+ */
+function calcChecklistScore(inputs, config) {
+  const activities = config.activities || [];
+  const roles = config.roles || [];
+  const pointsPerActivity = safeNum(config.pointsPerActivity);
+  let total = 0;
+  const activityResults = [];
+
+  for (const act of activities) {
+    const entry = inputs?.[act.key];
+    let actScore = 0;
+    let actRole = "NONE";
+    let enabled = false;
+
+    if (entry && (entry.enabled === true || entry === true)) {
+      enabled = true;
+      if (roles.length > 0 && entry.role) {
+        const roleConfig = roles.find(r => r.value === entry.role);
+        const multiplier = roleConfig ? roleConfig.multiplier : 1.0;
+        actScore = round2(pointsPerActivity * multiplier);
+        actRole = entry.role;
+      } else {
+        // Simple checkbox (no roles) — e.g., NSS activities, course file compliance
+        actScore = pointsPerActivity;
+        actRole = "CHECKED";
+      }
+    }
+
+    activityResults.push({
+      key: act.key,
+      label: act.label,
+      enabled,
+      role: actRole,
+      score: actScore,
+    });
+    total += actScore;
+  }
+
+  const final = round2(cap(total, config.maxScore));
+  return {
+    rawScore: round2(total),
+    finalScore: final,
+    formula: `checklist: ${activityResults.filter(a => a.enabled).length}/${activities.length} activities selected = ${round2(total)}`,
+    activityResults,
+  };
+}
+
+/**
  * F. Amount-tier lookup (for sponsored research, consultancy).
  */
 function calcAmountTierScore(amount, tiers, maxScore, roleMultiplier) {
@@ -310,6 +360,30 @@ function calculateParameter(paramConfig, inputs) {
         }
       }
 
+      // Apply sub-group capping if defined (e.g., Associate innovative teaching)
+      if (paramConfig.subGroupCap && componentResults.length > 0) {
+        const sgc = paramConfig.subGroupCap;
+        const groupKeys = sgc.keys || [];
+        let groupTotal = 0;
+        for (const cr of componentResults) {
+          if (groupKeys.includes(cr.key)) {
+            groupTotal += cr.score;
+          }
+        }
+        if (groupTotal > sgc.maxScore) {
+          const excess = groupTotal - sgc.maxScore;
+          total -= excess;
+          // Proportionally reduce group members
+          const ratio = sgc.maxScore / groupTotal;
+          for (const cr of componentResults) {
+            if (groupKeys.includes(cr.key)) {
+              cr.score = round2(cr.score * ratio);
+              cr.formula += ` (sub-group capped: ${sgc.label} max ${sgc.maxScore})`;
+            }
+          }
+        }
+      }
+
       // Handle sponsored research with amount tiers + role multiplier
       if (paramConfig.amountTiers) {
         const amount = safeNum(inputData.projectAmount);
@@ -333,6 +407,21 @@ function calculateParameter(paramConfig, inputs) {
 
       if (!result.formulaExplain) {
         result.formulaExplain = `sum of ${componentResults.length} components = ${round2(total)}`;
+      }
+      break;
+    }
+
+    case FORMULA.CHECKLIST: {
+      const calc = calcChecklistScore(inputData, paramConfig);
+      result.rawScore = calc.rawScore;
+      result.finalScore = calc.finalScore;
+      result.formulaExplain = calc.formula;
+      result.activityResults = calc.activityResults;
+
+      // Collect inputs
+      for (const act of paramConfig.activities || []) {
+        const entry = inputData?.[act.key];
+        result.inputValues[act.key] = entry || { enabled: false };
       }
       break;
     }
@@ -520,5 +609,6 @@ module.exports = {
   calcThresholdScore,
   calcDirectScore,
   calcAmountTierScore,
+  calcChecklistScore,
   averageSemesterScores,
 };
