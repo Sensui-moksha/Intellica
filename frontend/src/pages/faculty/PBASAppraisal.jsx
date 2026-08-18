@@ -186,7 +186,7 @@ const handleInputChange = useCallback((sectionKey, paramKey, fieldKey, value, ta
 
 // Save draft
 const handleSave = async () => {
-  if (!rules) return;
+  if (!rules) return null;
   setSaving(true);
   try {
     const res = await pbasApi.saveAppraisal({
@@ -194,23 +194,26 @@ const handleSave = async () => {
     });
     if (res.data?.appraisal?._id) {
       setAppraisalId(res.data.appraisal._id);
+      return res.data.appraisal._id;
     }
   } catch (err) {
     console.error('Save failed:', err);
   } finally {
     setSaving(false);
   }
+  return null;
 };
 
 // Submit for review
 const handleSubmit = async () => {
-  if (!appraisalId) {
-    await handleSave();
+  let targetId = appraisalId;
+  if (!targetId) {
+    targetId = await handleSave();
   }
   setSubmitting(true);
   try {
-    if (appraisalId) {
-      await pbasApi.submitAppraisal(appraisalId);
+    if (targetId) {
+      await pbasApi.submitAppraisal(targetId);
       setAppraisalStatus('SUBMITTED');
     }
   } catch (err) {

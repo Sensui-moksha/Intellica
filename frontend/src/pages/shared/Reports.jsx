@@ -100,7 +100,7 @@ export default function ReportsAndAnalytics() {
     try {
       const [res, scoreRes] = await Promise.all([
         reportApi.getFacultyPortfolio(facultyId),
-        pbasApi.getFacultyScore(facultyId).catch(() => null)
+        pbasApi.getFacultyScore(facultyId, selectedYear).catch(() => null)
       ]);
       setPortfolioData(res.data);
       if (scoreRes?.data?.score) {
