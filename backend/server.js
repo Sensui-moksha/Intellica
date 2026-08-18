@@ -192,10 +192,15 @@ if (fs.existsSync(activeDistDir)) {
    SPA FALLBACK — serve index.html for all non-API routes or render fallback
 ═══════════════════════════════════════════════════════════════════════════ */
 app.get("*", (req, res) => {
-  // If requesting an unhandled API or uploads path
-  if (req.path.startsWith("/uploads") || req.path.startsWith("/api")) {
+  // If requesting an unhandled API, uploads, or missing static assets (.js, .css, etc.)
+  if (
+    req.path.startsWith("/uploads") ||
+    req.path.startsWith("/api") ||
+    req.path.startsWith("/assets") ||
+    /\.(js|mjs|jsx|css|json|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot|map)$/i.test(req.path)
+  ) {
     return res.status(404).json({
-      message: `API endpoint '${req.originalUrl}' not found`,
+      message: `Resource '${req.originalUrl}' not found`,
       path: req.originalUrl
     });
   }

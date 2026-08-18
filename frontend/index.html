@@ -14,6 +14,20 @@
 
 <body>
   <div id="root"></div>
+  <script>
+    // Handle stale cached index.html referencing superseded asset chunks
+    window.addEventListener('error', function (e) {
+      if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+        var key = 'intellica_last_chunk_refresh';
+        var last = sessionStorage.getItem(key);
+        var now = Date.now();
+        if (!last || now - parseInt(last, 10) > 8000) {
+          sessionStorage.setItem(key, now.toString());
+          window.location.reload();
+        }
+      }
+    }, true);
+  </script>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 
