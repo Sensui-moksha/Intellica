@@ -32,6 +32,7 @@ export default function HodDashboard() {
   const [loading, setLoading]       = useState(true);
   const [showPBAS, setShowPBAS]     = useState(false);
   const [pbasScore, setPbasScore]   = useState(null);
+  const [pendingPbasCount, setPendingPbasCount] = useState(0);
   const [imgError, setImgError]     = useState(false);
 
   const [academicYear, setAcademicYear] = useState('');
@@ -53,13 +54,14 @@ export default function HodDashboard() {
     if (!isSilent) setLoading(true);
     try {
       const params = yearToFetch ? { academicYear: yearToFetch } : {};
-      const [profileRes, facultyRes, pendingRes, rankRes, meRes, actRes] = await Promise.all([
+      const [profileRes, facultyRes, pendingRes, rankRes, meRes, actRes, pbasRes] = await Promise.all([
         hodApi.getProfile().catch(() => null),
         hodApi.getFacultyList().catch(() => ({ data: [] })),
         hodApi.getPendingUploads().catch(() => ({ data: [] })),
         rankingApi.getRankings(params).catch(() => ({ data: [] })),
         authApi.getMe().catch(() => null),
-        activityApi.getActivities(params).catch(() => ({ data: { activities: [] } }))
+        activityApi.getActivities(params).catch(() => ({ data: { activities: [] } })),
+        pbasApi.getDeptAppraisals(yearToFetch || '').catch(() => ({ data: [] }))
       ]);
 
       const mergedProfile = {
@@ -76,6 +78,10 @@ export default function HodDashboard() {
       setRankings(rankList);
       const actList = actRes?.data?.activities || actRes?.data || [];
       setActivities(actList);
+      
+      const allAppraisals = Array.isArray(pbasRes?.data) ? pbasRes.data : [];
+      const pendingPbas = allAppraisals.filter(a => a.status === 'SUBMITTED');
+      setPendingPbasCount(pendingPbas.length);
     } catch (err) {
       console.error(err);
     } finally {
@@ -324,10 +330,15 @@ export default function HodDashboard() {
             </Link>
             <Link
               to="/hod/approvals"
-              className="flex items-center gap-2 px-5 py-2.5 bg-white text-slate-900 hover:bg-slate-100 text-xs font-bold rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+              className="relative flex items-center gap-2 px-5 py-2.5 bg-white text-slate-900 hover:bg-slate-100 text-xs font-bold rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-              <span>View Approvals ({pending.length})</span>
+              <span>View Approvals ({(pending.length || 0) + pendingPbasCount})</span>
+              {((pending.length || 0) + pendingPbasCount) > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[20px] h-[20px] px-1.5 bg-rose-500 text-white text-[10px] font-black rounded-full shadow-md animate-pulse">
+                  {(pending.length || 0) + pendingPbasCount}
+                </span>
+              )}
             </Link>
           </div>
         </div>
@@ -365,9 +376,9 @@ export default function HodDashboard() {
           },
           {
             label: 'Pending Approvals',
-            value: pending.length.toString(),
+            value: ((pending.length || 0) + pendingPbasCount).toString(),
             unit: 'to review',
-            subtext: 'Requires Action',
+            subtext: `${pendingPbasCount} PBAS • ${(pending.length || 0)} Uploads`,
             icon: Hourglass,
             color: '#d97706',
             bg: '#fef3c7'
