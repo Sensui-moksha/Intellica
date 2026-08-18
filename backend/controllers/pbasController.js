@@ -9,6 +9,7 @@
 
 const PBASAppraisal = require("../models/PBASAppraisal");
 const Faculty = require("../models/Faculty");
+const HOD = require("../models/HOD");
 const { calculatePBAS } = require("../services/pbasCalculator");
 const { getRulesForRole, mapDesignationToRole, RULES_VERSION } = require("../constants/pbasRules");
 
@@ -337,7 +338,10 @@ exports.getDepartmentAppraisals = async (req, res) => {
     const savedAppraisals = await PBASAppraisal.find({
       faculty: { $in: ids },
       academicYear,
-    }).populate("faculty", "name email department designation employeeId").lean();
+    })
+      .sort({ createdAt: 1 })
+      .populate("faculty", "name email department designation employeeId")
+      .lean();
 
     const savedMap = {};
     savedAppraisals.forEach(a => {
@@ -392,9 +396,14 @@ exports.getAllAppraisals = async (req, res) => {
   try {
     const { academicYear } = req.params;
 
-    const facultyList = await Faculty.find({}).lean();
+    const facultyUsers = await Faculty.find({}).lean();
+    const hodUsers = await HOD.find({}).lean();
+    const facultyList = [...facultyUsers, ...hodUsers];
+
     const savedAppraisals = await PBASAppraisal.find({ academicYear })
-      .populate("faculty", "name email department designation employeeId").lean();
+      .sort({ createdAt: 1 })
+      .populate("faculty", "name email department designation employeeId")
+      .lean();
 
     const savedMap = {};
     savedAppraisals.forEach(a => {
@@ -427,7 +436,7 @@ exports.getAllAppraisals = async (req, res) => {
             percentage:     calcResult.percentage,
           },
           calculationDetails: calcResult,
-          status: "AUTO_CALCULATED",
+          status: savedMap[fid] ? "DRAFT" : "AUTO_CALCULATED",
           isAutoCalculated: true,
         });
       }
