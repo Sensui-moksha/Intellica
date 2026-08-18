@@ -24,7 +24,8 @@ exports.calculate = async (req, res) => {
       return res.status(400).json({ message: "Role is required (ASSISTANT_PROFESSOR, ASSOCIATE_PROFESSOR, PROFESSOR)." });
     }
 
-    const result = calculatePBAS(role, semester1 || {}, semester2 || null);
+    const sem2 = (semester2 && Object.keys(semester2).length > 0) ? semester2 : null;
+    const result = calculatePBAS(role, semester1 || {}, sem2);
 
     if (!result.success) {
       return res.status(400).json({ message: result.error, validRoles: result.validRoles });
@@ -51,8 +52,11 @@ exports.saveAppraisal = async (req, res) => {
       return res.status(400).json({ message: "academicYear and role are required." });
     }
 
+    // If semester2 is empty, treat as null to avoid halving semesterAveraged scores
+    const sem2 = (semester2 && Object.keys(semester2).length > 0) ? semester2 : null;
+    
     // Run calculation
-    const calcResult = calculatePBAS(role, semester1 || {}, semester2 || null);
+    const calcResult = calculatePBAS(role, semester1 || {}, sem2);
     if (!calcResult.success) {
       return res.status(400).json({ message: calcResult.error });
     }

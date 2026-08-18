@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { pbasApi, academicYearApi } from '../../api/services';
 import PBASScoreSummary from '../../components/pbas/PBASScoreSummary';
+import PBASSummarySheet from '../../components/pbas/PBASSummarySheet';
+import PBASSection from '../../components/pbas/PBASSection';
 
 export default function PBASApprovalsTab() {
   const [academicYear, setAcademicYear] = useState('');
@@ -25,6 +27,9 @@ export default function PBASApprovalsTab() {
   const [actionType, setActionType] = useState(null); // null | 'DISCUSSION' | 'APPROVE'
   const [actionComment, setActionComment] = useState('');
   
+  const [rulesCache, setRulesCache] = useState({});
+  const [expandedSection, setExpandedSection] = useState(null);
+
   // HOD Scores
   const [hodScores, setHodScores] = useState({
     teaching: 0,
@@ -34,6 +39,19 @@ export default function PBASApprovalsTab() {
   });
 
   useEffect(() => {
+    // Load rules for all roles
+    Promise.all([
+      pbasApi.getRules('ASSISTANT_PROFESSOR'),
+      pbasApi.getRules('ASSOCIATE_PROFESSOR'),
+      pbasApi.getRules('PROFESSOR')
+    ]).then(responses => {
+      setRulesCache({
+        ASSISTANT_PROFESSOR: responses[0].data.rules,
+        ASSOCIATE_PROFESSOR: responses[1].data.rules,
+        PROFESSOR: responses[2].data.rules
+      });
+    }).catch(err => console.error("Failed to load rules:", err));
+
     academicYearApi.getAll().then(res => {
       const list = Array.isArray(res.data) ? res.data : [];
       if (list.length > 0) {
@@ -316,9 +334,68 @@ export default function PBASApprovalsTab() {
                 </div>
               </div>
 
-              {/* Readonly Summary */}
-              <div className="mt-2">
+              <div className="mt-2 space-y-4">
                 <PBASScoreSummary calcResult={selected.calculationDetails} />
+                
+                {selected.role && rulesCache[selected.role] && (
+                  <>
+                    <PBASSummarySheet 
+                      calcResult={selected.calculationDetails}
+                      rules={rulesCache[selected.role]}
+                      facultyName={selected.faculty?.name}
+                      department={selected.faculty?.department}
+                      hodScores={selected.hodScores}
+                      ifacScores={selected.ifacScores}
+                    />
+
+                    <div className="space-y-3 mt-4">
+                      <h3 className="text-sm font-bold text-slate-800 border-b pb-2">Detailed Breakdown</h3>
+                      {rulesCache[selected.role].sections.map(sectionConfig => {
+                        const isExpanded = expandedSection === sectionConfig.key;
+                        const sectionResult = selected.calculationDetails?.sections?.find(s => s.key === sectionConfig.key);
+                        
+                        return (
+                          <div key={sectionConfig.key} className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50">
+                            <button
+                              onClick={() => setExpandedSection(isExpanded ? null : sectionConfig.key)}
+                              className="w-full flex items-center justify-between p-4 bg-white hover:bg-slate-50 transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className="font-black text-slate-400">{sectionConfig.numeral || '-'}</span>
+                                <span className="font-bold text-slate-700 text-xs text-left">{sectionConfig.label}</span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">
+                                  {sectionResult?.finalScore?.toFixed(1) || 0} / {sectionConfig.maxScore}
+                                </span>
+                                <svg className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                              </div>
+                            </button>
+                            
+                            <AnimatePresence>
+                              {isExpanded && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  className="border-t border-slate-200 p-4 bg-white"
+                                >
+                                  <PBASSection
+                                    sectionConfig={sectionConfig}
+                                    sectionResult={sectionResult}
+                                    inputs={selected.semester1?.[sectionConfig.key] || {}}
+                                    onInputChange={() => {}} // Read-only
+                                    readOnly={true}
+                                  />
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
               
               {selected.status === 'REVISION_REQUIRED' && selected.hodComment && (
