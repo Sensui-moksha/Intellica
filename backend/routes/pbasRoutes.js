@@ -28,8 +28,10 @@ router.get("/faculty-score/:facultyId", authMiddleware, authorizeRoles("FACULTY"
 // ── HOD review endpoints ──
 router.get("/review/:facultyId/:academicYear", authMiddleware, authorizeRoles("HOD", "ADMIN"), pbas.getAppraisalForReview);
 router.get("/department/:academicYear",        authMiddleware, authorizeRoles("HOD"),           pbas.getDepartmentAppraisals);
+router.put("/:id/hod-scores",                  authMiddleware, authorizeRoles("HOD", "ADMIN"),  pbas.updateHodScores);
 
-// ── Admin endpoints ──
+// ── Admin / IFAC endpoints ──
 router.get("/all/:academicYear",  authMiddleware, authorizeRoles("ADMIN"), pbas.getAllAppraisals);
+router.put("/:id/ifac-scores",    authMiddleware, authorizeRoles("ADMIN"), pbas.updateIfacScores);
 
 module.exports = router;

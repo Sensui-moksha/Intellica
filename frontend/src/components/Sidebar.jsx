@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutGrid, Building2, Users2, CheckSquare,
   SlidersHorizontal, ListOrdered, Settings,
-  LogOut, HelpCircle, Send, BarChart3, Calendar, FileText
+  LogOut, HelpCircle, Send, BarChart3, Calendar, FileText, ClipboardList
 } from 'lucide-react';
 import { adminApi, hodApi, authApi } from '../api/services';
 
@@ -46,6 +46,7 @@ export default function Sidebar({ role }) {
       { name: 'Faculty', path: '/admin/faculty', icon: Users2 },
       { name: 'Approvals', path: '/admin/approvals', icon: CheckSquare, badge: pendingCount },
       { name: 'Credit Config', path: '/admin/credit-config', icon: SlidersHorizontal },
+      { name: 'PBAS Appraisal', path: '/admin/pbas-appraisal', icon: ClipboardList },
       { name: 'Reports & Analytics', path: '/admin/reports', icon: BarChart3 },
       { name: 'Calendar', path: '/admin/calendar', icon: Calendar },
       { name: 'Settings', path: '/admin/settings', icon: Settings },
@@ -55,6 +56,7 @@ export default function Sidebar({ role }) {
       { name: 'Faculty', path: '/hod/faculty', icon: Users2 },
       { name: 'Approvals', path: '/hod/approvals', icon: CheckSquare, badge: pendingCount },
       { name: 'My Activities', path: '/hod/my-activities', icon: ListOrdered },
+      { name: 'PBAS Appraisal', path: '/hod/pbas-appraisal', icon: ClipboardList },
       { name: 'Reports & Analytics', path: '/hod/reports', icon: BarChart3 },
       { name: 'Calendar', path: '/hod/calendar', icon: Calendar },
       { name: 'Settings', path: '/hod/settings', icon: Settings },
@@ -63,6 +65,7 @@ export default function Sidebar({ role }) {
       { name: 'Dashboard', path: '/faculty/dashboard', icon: LayoutGrid },
       { name: 'My Uploads', path: '/faculty/my-uploads', icon: FileText },
       { name: 'Standings', path: '/faculty/standings', icon: BarChart3 },
+      { name: 'PBAS Appraisal', path: '/faculty/pbas-appraisal', icon: ClipboardList },
       { name: 'Calendar', path: '/faculty/calendar', icon: Calendar },
       { name: 'Settings', path: '/faculty/settings', icon: Settings },
     ],

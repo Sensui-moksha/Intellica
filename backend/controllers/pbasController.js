@@ -44,7 +44,7 @@ exports.calculate = async (req, res) => {
 exports.saveAppraisal = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { academicYear, role, semester1, semester2, facultyId } = req.body;
+    const { academicYear, role, semester1, semester2, generalInfo, facultyId } = req.body;
     const targetFacultyId = (facultyId && (req.user.role === 'ADMIN' || req.user.role === 'HOD')) ? facultyId : userId;
 
     if (!academicYear || !role) {
@@ -57,30 +57,37 @@ exports.saveAppraisal = async (req, res) => {
       return res.status(400).json({ message: calcResult.error });
     }
 
+    const updatePayload = {
+      role,
+      semester1: semester1 || {},
+      semester2: semester2 || {},
+      calculatedScores: {
+        teaching:       calcResult.sections.find(s => s.key === "teaching")?.finalScore || 0,
+        professional:   calcResult.sections.find(s => s.key === "professional")?.finalScore || 0,
+        research:       calcResult.sections.find(s => s.key === "research")?.finalScore || 0,
+        administrative: calcResult.sections.find(s => s.key === "administrative")?.finalScore || 0,
+        total:          calcResult.totalScore,
+        percentage:     calcResult.percentage,
+      },
+      calculationDetails: calcResult,
+      calculationMetadata: {
+        rulesVersion: calcResult.metadata.rulesVersion,
+        calculatedAt: new Date(),
+        unresolvedRules: calcResult.unresolvedRules,
+        warnings: calcResult.warnings,
+      },
+      status: "DRAFT",
+    };
+
+    // Merge generalInfo if provided
+    if (generalInfo) {
+      updatePayload.generalInfo = generalInfo;
+    }
+
     // Upsert the appraisal
     const appraisal = await PBASAppraisal.findOneAndUpdate(
       { faculty: targetFacultyId, academicYear },
-      {
-        role,
-        semester1: semester1 || {},
-        semester2: semester2 || {},
-        calculatedScores: {
-          teaching:       calcResult.sections.find(s => s.key === "teaching")?.finalScore || 0,
-          professional:   calcResult.sections.find(s => s.key === "professional")?.finalScore || 0,
-          research:       calcResult.sections.find(s => s.key === "research")?.finalScore || 0,
-          administrative: calcResult.sections.find(s => s.key === "administrative")?.finalScore || 0,
-          total:          calcResult.totalScore,
-          percentage:     calcResult.percentage,
-        },
-        calculationDetails: calcResult,
-        calculationMetadata: {
-          rulesVersion: calcResult.metadata.rulesVersion,
-          calculatedAt: new Date(),
-          unresolvedRules: calcResult.unresolvedRules,
-          warnings: calcResult.warnings,
-        },
-        status: "DRAFT",
-      },
+      updatePayload,
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
@@ -462,5 +469,114 @@ exports.syncActivities = async (req, res) => {
   } catch (err) {
     console.error("[PBAS] Sync activities error:", err);
     res.status(500).json({ message: "Failed to sync activities." });
+  }
+};
+
+/**
+ * PUT /api/pbas/:id/hod-scores
+ * HOD/DFAC enters their own scores for each section.
+ */
+exports.updateHodScores = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { teaching, professional, research, administrative, comment } = req.body;
+
+    const appraisal = await PBASAppraisal.findById(id);
+    if (!appraisal) {
+      return res.status(404).json({ message: "Appraisal not found." });
+    }
+
+    // Verify HOD has access (same department)
+    if (req.user.role === "HOD") {
+      const faculty = await Faculty.findById(appraisal.faculty);
+      if (!faculty || faculty.department !== req.user.department) {
+        return res.status(403).json({ message: "Access denied — faculty not in your department." });
+      }
+    } else if (req.user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Only HOD or Admin can enter HoD/DFAC scores." });
+    }
+
+    const hodTeaching       = teaching != null ? Number(teaching) : null;
+    const hodProfessional   = professional != null ? Number(professional) : null;
+    const hodResearch       = research != null ? Number(research) : null;
+    const hodAdministrative = administrative != null ? Number(administrative) : null;
+    const hodTotal = [hodTeaching, hodProfessional, hodResearch, hodAdministrative]
+      .filter(v => v != null)
+      .reduce((a, b) => a + b, 0);
+
+    appraisal.hodScores = {
+      teaching: hodTeaching,
+      professional: hodProfessional,
+      research: hodResearch,
+      administrative: hodAdministrative,
+      total: hodTotal,
+    };
+
+    if (comment) {
+      appraisal.hodComment = comment;
+    }
+
+    appraisal.status = "HOD_APPROVED";
+    await appraisal.save();
+
+    res.json({ message: "HoD/DFAC scores saved successfully.", appraisal });
+  } catch (err) {
+    console.error("[PBAS] HoD score error:", err);
+    res.status(500).json({ message: "Failed to save HoD/DFAC scores." });
+  }
+};
+
+/**
+ * PUT /api/pbas/:id/ifac-scores
+ * IFAC committee enters final scores for each section.
+ */
+exports.updateIfacScores = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { teaching, professional, research, administrative, comment, signatures } = req.body;
+
+    if (req.user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Only Admin/IFAC can enter IFAC scores." });
+    }
+
+    const appraisal = await PBASAppraisal.findById(id);
+    if (!appraisal) {
+      return res.status(404).json({ message: "Appraisal not found." });
+    }
+
+    const ifacTeaching       = teaching != null ? Number(teaching) : null;
+    const ifacProfessional   = professional != null ? Number(professional) : null;
+    const ifacResearch       = research != null ? Number(research) : null;
+    const ifacAdministrative = administrative != null ? Number(administrative) : null;
+    const ifacTotal = [ifacTeaching, ifacProfessional, ifacResearch, ifacAdministrative]
+      .filter(v => v != null)
+      .reduce((a, b) => a + b, 0);
+
+    appraisal.ifacScores = {
+      teaching: ifacTeaching,
+      professional: ifacProfessional,
+      research: ifacResearch,
+      administrative: ifacAdministrative,
+      total: ifacTotal,
+    };
+
+    if (comment) {
+      appraisal.ifacComment = comment;
+    }
+
+    if (signatures && Array.isArray(signatures)) {
+      appraisal.ifacSignatures = signatures.map(s => ({
+        name: s.name || "",
+        signedAt: new Date(),
+      }));
+    }
+
+    appraisal.status = "APPROVED";
+    await appraisal.save();
+
+    res.json({ message: "IFAC scores saved successfully.", appraisal });
+  } catch (err) {
+    console.error("[PBAS] IFAC score error:", err);
+    res.status(500).json({ message: "Failed to save IFAC scores." });
   }
 };

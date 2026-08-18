@@ -29,6 +29,33 @@ const pbasAppraisalSchema = new mongoose.Schema(
       required: true,
     },
 
+    /* ── General Information (from the appraisal form header) ── */
+    generalInfo: {
+      // Common fields across all roles
+      employeeId:     { type: String, default: "" },
+      dateOfJoining:  { type: Date, default: null },
+      email:          { type: String, default: "" },
+      mobile:         { type: String, default: "" },
+      educationalQualifications: [{
+        degree:        { type: String, default: "" },
+        periodOfStudy: { type: String, default: "" },
+        university:    { type: String, default: "" },
+        classCgpa:     { type: String, default: "" },
+        yearOfPass:    { type: String, default: "" },
+      }],
+      // Assistant / Associate specific
+      totalExperience:        { type: Number, default: null },
+      experienceInMIC:        { type: String, default: "" },
+      universityRatification: { type: String, enum: ["Yes", "No", ""], default: "" },
+      totalEmoluments: {
+        basic: { type: Number, default: null },
+        gross: { type: Number, default: null },
+      },
+      // Professor specific
+      dateOfBirth: { type: Date, default: null },
+      address:     { type: String, default: "" },
+    },
+
     /* ── Raw input data per semester ── */
     semester1: {
       teaching:       { type: Object, default: {} },
@@ -44,7 +71,7 @@ const pbasAppraisalSchema = new mongoose.Schema(
       administrative: { type: Object, default: {} },
     },
 
-    /* ── Calculated scores (summary) ── */
+    /* ── Self-Calculated scores (summary) ── */
     calculatedScores: {
       teaching:       { type: Number, default: 0 },
       professional:   { type: Number, default: 0 },
@@ -52,6 +79,24 @@ const pbasAppraisalSchema = new mongoose.Schema(
       administrative: { type: Number, default: 0 },
       total:          { type: Number, default: 0 },
       percentage:     { type: Number, default: 0 },
+    },
+
+    /* ── HoD / DFAC Scores (departmental review) ── */
+    hodScores: {
+      teaching:       { type: Number, default: null },
+      professional:   { type: Number, default: null },
+      research:       { type: Number, default: null },
+      administrative: { type: Number, default: null },
+      total:          { type: Number, default: null },
+    },
+
+    /* ── IFAC Scores (institutional final appraisal) ── */
+    ifacScores: {
+      teaching:       { type: Number, default: null },
+      professional:   { type: Number, default: null },
+      research:       { type: Number, default: null },
+      administrative: { type: Number, default: null },
+      total:          { type: Number, default: null },
     },
 
     /* ── Full calculation breakdown (for explainability) ── */
@@ -62,7 +107,7 @@ const pbasAppraisalSchema = new mongoose.Schema(
 
     /* ── Calculation metadata ── */
     calculationMetadata: {
-      rulesVersion:    { type: String, default: "PBAS-v1" },
+      rulesVersion:    { type: String, default: "PBAS-v2" },
       calculatedAt:    { type: Date, default: null },
       unresolvedRules: { type: [Object], default: [] },
       warnings:        { type: [Object], default: [] },
@@ -75,6 +120,8 @@ const pbasAppraisalSchema = new mongoose.Schema(
         "DRAFT",
         "SUBMITTED",
         "HOD_REVIEW",
+        "HOD_APPROVED",
+        "IFAC_REVIEW",
         "APPROVED",
         "REVISION_REQUIRED",
       ],
@@ -87,10 +134,21 @@ const pbasAppraisalSchema = new mongoose.Schema(
       default: "",
     },
 
+    ifacComment: {
+      type: String,
+      default: "",
+    },
+
     adminComment: {
       type: String,
       default: "",
     },
+
+    /* ── IFAC member signatures ── */
+    ifacSignatures: [{
+      name:      { type: String, default: "" },
+      signedAt:  { type: Date, default: null },
+    }],
   },
   { timestamps: true }
 );

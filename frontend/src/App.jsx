@@ -29,6 +29,7 @@ import HodApprovals from './pages/hod/Approvals';
 import FacultyDashboard from './pages/faculty/Dashboard';
 import FacultyUpload from './pages/faculty/Upload';
 import FacultyMyActivities from './pages/faculty/MyActivities';
+import PBASAppraisal from './pages/faculty/PBASAppraisal';
 
 function App() {
   useEffect(() => {
@@ -56,6 +57,7 @@ function App() {
           <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="pbas-appraisal" element={<PBASAppraisal />} />
         </Route>
 
         {/* HOD Routes */}
@@ -70,6 +72,7 @@ function App() {
           <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="pbas-appraisal" element={<PBASAppraisal />} />
         </Route>
 
         {/* Faculty Routes */}
@@ -81,6 +84,7 @@ function App() {
           <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="pbas-appraisal" element={<PBASAppraisal />} />
         </Route>
       </Routes>
     </Router>
