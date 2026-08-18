@@ -4,8 +4,13 @@ const { getUserUploadDir } = require("../utils/storagePath");
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Saves in: <UPLOAD_DIR>/intellica/<user_name>/profile_pic/
-    const userDir = getUserUploadDir(req.user, "profile_pic");
+    const user = req.user || {
+      name: req.body?.name,
+      department: req.body?.department,
+      employeeId: req.body?.employeeId || req.body?.regId,
+      role: req.body?.role || (req.path?.includes("hod") ? "HOD" : "FACULTY")
+    };
+    const userDir = getUserUploadDir(user, "profile_pic");
     cb(null, userDir);
   },
   filename: function (req, file, cb) {

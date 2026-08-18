@@ -441,6 +441,7 @@ export default function ReportsAndAnalytics() {
                           <img
                             src={avatarUrl}
                             alt={member.name}
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             className="w-11 h-11 rounded-full object-cover ring-2 ring-blue-500/20 shadow-xs"
                           />
                         ) : (
@@ -550,10 +551,11 @@ export default function ReportsAndAnalytics() {
                       <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
                         <div className="flex items-center gap-4">
                           <div className="relative">
-                            {portfolioData.user?.profileImage ? (
+                            {portfolioData.user?.profileImage && resolveProfileImageUrl(portfolioData.user.profileImage) ? (
                               <img
                                 src={resolveProfileImageUrl(portfolioData.user.profileImage)}
                                 alt={portfolioData.user?.name}
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                 className="w-16 h-16 rounded-full object-cover ring-3 ring-blue-400 shadow-md"
                               />
                             ) : (

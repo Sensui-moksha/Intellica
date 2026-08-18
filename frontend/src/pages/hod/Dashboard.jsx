@@ -108,6 +108,7 @@ export default function HodDashboard() {
     </div>
   );
 
+  const [imgError, setImgError] = useState(false);
   const hodDept = (profile?.department || 'CSE').toUpperCase();
   const displayName = profile?.name || localStorage.getItem('userName') || 'moksha';
   const userInitial = (displayName || 'M').charAt(0).toUpperCase();
@@ -224,10 +225,11 @@ export default function HodDashboard() {
           <div className="flex items-center gap-5">
             {/* Profile Avatar with Active Checkmark */}
             <div className="relative shrink-0">
-              {profileImgUrl ? (
+              {profileImgUrl && !imgError ? (
                 <img
                   src={profileImgUrl}
                   alt={displayName}
+                  onError={() => setImgError(true)}
                   className="w-18 h-18 sm:w-20 sm:h-20 rounded-full object-cover ring-4 ring-white/15 shadow-xl border border-white/20"
                 />
               ) : (

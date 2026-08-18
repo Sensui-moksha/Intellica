@@ -14,15 +14,19 @@ const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
 export const resolveProfileImageUrl = (img) => {
   if (!img || typeof img !== 'string') return null;
   const trimmed = img.trim();
-  if (!trimmed) return null;
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined' || trimmed === '""') return null;
   // Already an absolute URL (data URI, http/https)
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
     return trimmed;
   }
+  // Bare filename with no directory (e.g. "profile_image.jpg") — do not fetch non-existent root files
+  if (!trimmed.includes('/') && !trimmed.includes('\\')) {
+    return null;
+  }
   // Relative path — served via Vite proxy → /uploads/...
-  const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  const cleanPath = trimmed.replace(/\\/g, '/').startsWith('/') ? trimmed.replace(/\\/g, '/') : `/${trimmed.replace(/\\/g, '/')}`;
   if (cleanPath.startsWith('/uploads/')) return cleanPath;
-  return `/uploads/${trimmed.replace(/^uploads\//, '')}`;
+  return `/uploads/${cleanPath.replace(/^\/+/, '')}`;
 };
 
 export const getDocumentUrl = (filePath) => {
@@ -349,6 +353,7 @@ export default function Header() {
                     <img
                       src={imageUrl}
                       alt={displayName}
+                      onError={() => setImgError(true)}
                       className="w-9 h-9 rounded-full object-cover ring-2 ring-blue-500/20 shrink-0"
                     />
                   ) : (
