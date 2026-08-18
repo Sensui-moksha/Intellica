@@ -365,6 +365,7 @@ exports.getDepartmentAppraisals = async (req, res) => {
             total:          calcResult.totalScore,
             percentage:     calcResult.percentage,
           },
+          calculationDetails: calcResult,
           status: "AUTO_CALCULATED",
           isAutoCalculated: true,
         });
@@ -421,6 +422,7 @@ exports.getAllAppraisals = async (req, res) => {
             total:          calcResult.totalScore,
             percentage:     calcResult.percentage,
           },
+          calculationDetails: calcResult,
           status: "AUTO_CALCULATED",
           isAutoCalculated: true,
         });

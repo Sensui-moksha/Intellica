@@ -318,7 +318,7 @@ export default function PBASApprovalsTab() {
 
               {/* Readonly Summary */}
               <div className="mt-2">
-                <PBASScoreSummary scores={selected.calculatedScores || {}} />
+                <PBASScoreSummary calcResult={selected.calculationDetails} />
               </div>
               
               {selected.status === 'REVISION_REQUIRED' && selected.hodComment && (
