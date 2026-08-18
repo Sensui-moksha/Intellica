@@ -2,12 +2,52 @@
 const jwt = require("jsonwebtoken");
 const crypto = require('crypto');
 const bcrypt = require("bcryptjs");
+const fs = require("fs");
+const path = require("path");
 
 const Faculty = require("../models/Faculty");
 const HOD = require("../models/HOD");
 const User = require("../models/User");
 const { sendOTP, sendRegistrationNotification } = require("../utils/emailService");
-const { getUserRelativePath } = require("../utils/storagePath");
+const { getUserRelativePath, getUploadBaseDir } = require("../utils/storagePath");
+
+/**
+ * Safely resolves the stored profile image to an existing relative path or empty string.
+ * Auto-corrects legacy bare filenames like "profile_image.jpg".
+ */
+function resolveValidProfileImage(user) {
+  if (!user || !user.profileImage) return "";
+  const p = String(user.profileImage).trim();
+  if (!p || p === "null" || p === "undefined") return "";
+
+  // Absolute or data URLs
+  if (p.startsWith("http://") || p.startsWith("https://") || p.startsWith("data:")) {
+    return p;
+  }
+
+  const baseDir = getUploadBaseDir();
+
+  // Check if file exists relative to uploads folder
+  if (fs.existsSync(path.join(baseDir, p))) {
+    return p.replace(/\\/g, "/");
+  }
+
+  // Check user specific profile_pic folder
+  try {
+    const expectedRel = getUserRelativePath(user, "profile_pic", path.basename(p));
+    if (fs.existsSync(path.join(baseDir, expectedRel))) {
+      // Auto-heal database record in background
+      user.profileImage = expectedRel;
+      if (typeof user.save === 'function') {
+        user.save().catch(() => {});
+      }
+      return expectedRel;
+    }
+  } catch (_) {}
+
+  // File not found on disk — return empty string to prevent 404s
+  return "";
+}
 
 /* =====================================================
    FACULTY REGISTRATION
@@ -88,7 +128,9 @@ exports.registerFaculty = async (req, res) => {
       role: "FACULTY",
       isApproved: false,
       status: "PENDING",
-      profileImage: req.file.filename
+      profileImage: req.file
+        ? getUserRelativePath({ name, department: normalizedDept, employeeId, role: "FACULTY" }, "profile_pic", req.file.filename)
+        : ""
     });
 
     await newFaculty.save();
@@ -192,7 +234,9 @@ exports.registerHOD = async (req, res) => {
       role: "HOD",
       isApproved: false,
       status: "PENDING",
-      profileImage: req.file.filename
+      profileImage: req.file
+        ? getUserRelativePath({ name, department: normalizedDept, employeeId, role: "HOD" }, "profile_pic", req.file.filename)
+        : ""
     });
 
     await newHOD.save();
@@ -460,7 +504,7 @@ if (foundRole === "HOD") {
           googleScholar: user.googleScholar || "",
           vidwanId: user.vidwanId || "",
           scopusId: user.scopusId || "",
-          profileImage: user.profileImage || "",
+          profileImage: resolveValidProfileImage(user),
           twoFactorEnabled: false,
           requiresOtp: false,
           isFirstLogin: Boolean(user.isFirstLogin),
@@ -597,7 +641,7 @@ exports.verifyOTP = async (req, res) => {
       googleScholar: user.googleScholar || "",
       vidwanId: user.vidwanId || "",
       scopusId: user.scopusId || "",
-      profileImage: user.profileImage || "",
+      profileImage: resolveValidProfileImage(user),
       isFirstLogin: Boolean(user.isFirstLogin),
       message: "Login successful"
     });
@@ -631,7 +675,10 @@ exports.getMe = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json(user);
+    const userData = user.toObject ? user.toObject() : { ...user };
+    userData.profileImage = resolveValidProfileImage(user);
+
+    res.json(userData);
 
   } catch (err) {
     console.error("GET ME ERROR:", err);
@@ -706,7 +753,7 @@ exports.updateProfile = async (req, res) => {
         vidwanId: user.vidwanId || "",
         scopusId: user.scopusId || "",
         twoFactorEnabled: user.twoFactorEnabled || false,
-        profileImage: user.profileImage || "",
+        profileImage: resolveValidProfileImage(user),
         isFirstLogin: user.isFirstLogin || false
       }
     });

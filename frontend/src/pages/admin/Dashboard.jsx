@@ -135,6 +135,7 @@ export default function AdminDashboard() {
   const maxCredits    = topDeptCredits || 25;
   const pendingCount  = stats?.pendingCount ?? pendingUploads.length;
 
+  const [imgError, setImgError] = useState(false);
   const displayName = profile?.name || localStorage.getItem('userName') || 'Administrator';
   const userInitial = (displayName || 'A').charAt(0).toUpperCase();
   const profileImg = profile?.profileImage || localStorage.getItem('profileImage');
@@ -177,10 +178,11 @@ export default function AdminDashboard() {
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-center gap-5">
             <div className="relative shrink-0">
-              {profileImgUrl ? (
+              {profileImgUrl && !imgError ? (
                 <img
                   src={profileImgUrl}
                   alt={displayName}
+                  onError={() => setImgError(true)}
                   className="w-18 h-18 sm:w-20 sm:h-20 rounded-full object-cover ring-4 ring-white/15 shadow-xl border border-white/20"
                 />
               ) : (
